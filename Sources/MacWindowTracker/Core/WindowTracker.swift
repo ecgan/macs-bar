@@ -172,6 +172,7 @@ public final class WindowTracker: ObservableObject {
 
         // Build tracked windows list
         var newWindows: [TrackedWindow] = []
+        var appCache: [pid_t: NSRunningApplication] = [:]
 
         for cgWindow in cgWindows {
             // Apply size filter
@@ -185,7 +186,20 @@ public final class WindowTracker: ObservableObject {
                 continue
             }
 
-            let bundleId = CGWindowList.bundleId(forPid: cgWindow.ownerPid)
+            // Skip windows from non-regular apps.
+            // Only regular apps (those that appear in the Dock) have user-manageable windows.
+            // This filters out background utilities (e.g. "borders"), overlay apps, and
+            // unbundled processes that aren't proper macOS apps.
+            let app: NSRunningApplication? = appCache[cgWindow.ownerPid] ?? {
+                let resolved = NSRunningApplication(processIdentifier: cgWindow.ownerPid)
+                if let resolved { appCache[cgWindow.ownerPid] = resolved }
+                return resolved
+            }()
+            guard let app, app.activationPolicy == .regular else {
+                continue
+            }
+
+            let bundleId = app.bundleIdentifier
             let monitorId = monitorManager.monitorId(forWindowFrame: cgWindow.bounds)
 
             let trackedWindow = TrackedWindow(
