@@ -56,6 +56,7 @@ final class AXAppObserver: @unchecked Sendable {
                 kAXUIElementDestroyedNotification,
                 kAXWindowMiniaturizedNotification,
                 kAXWindowDeminiaturizedNotification,
+                kAXWindowResizedNotification,
             ])
         ]
 

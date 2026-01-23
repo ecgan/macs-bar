@@ -66,6 +66,14 @@ extension AXUIElement {
     func setMain(_ value: Bool) -> Bool {
         AXUIElementSetAttributeValue(self, kAXMainAttribute as CFString, value as CFTypeRef) == .success
     }
+
+    /// Set the size of this window
+    @discardableResult
+    func setSize(_ size: CGSize) -> Bool {
+        var cfSize = size
+        guard let value = AXValueCreate(.cgSize, &cfSize) else { return false }
+        return AXUIElementSetAttributeValue(self, kAXSizeAttribute as CFString, value) == .success
+    }
 }
 
 // MARK: - Private API Declaration
