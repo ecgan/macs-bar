@@ -2,18 +2,17 @@
 import os
 import MacWindowTracker
 
-@MainActor
-final class KeyboardShortcutHandler {
-    weak var tracker: WindowTracker?
+final class KeyboardShortcutHandler: @unchecked Sendable {
+    @MainActor weak var tracker: WindowTracker?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var tapThread: Thread?
-    private nonisolated let _lock = OSAllocatedUnfairLock<(tapRef: CFMachPort?, tapRunLoop: CFRunLoop?)>(uncheckedState: (nil, nil))
+    private let _lock = OSAllocatedUnfairLock<(tapRef: CFMachPort?, tapRunLoop: CFRunLoop?)>(uncheckedState: (nil, nil))
     private var retainedSelf: Unmanaged<KeyboardShortcutHandler>?
     private var lastActivatedWindowId: CGWindowID?
 
-    func start() {
+    @MainActor func start() {
         let eventMask: CGEventMask = 1 << CGEventType.keyDown.rawValue
         let retained = Unmanaged.passRetained(self)
         retainedSelf = retained
@@ -55,7 +54,7 @@ final class KeyboardShortcutHandler {
         tapThread = thread
     }
 
-    func stop() {
+    @MainActor func stop() {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
@@ -77,7 +76,7 @@ final class KeyboardShortcutHandler {
         retainedSelf = nil
     }
 
-    private nonisolated func handleCGEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+    private func handleCGEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
         let flags = event.flags
         guard flags.contains(.maskControl),
               flags.contains(.maskAlternate),
@@ -106,7 +105,7 @@ final class KeyboardShortcutHandler {
         return nil
     }
 
-    private func activateAdjacentWindow(offset: Int) {
+    @MainActor private func activateAdjacentWindow(offset: Int) {
         guard let tracker else { return }
         let windows = tracker.windows
 
