@@ -122,15 +122,7 @@ public final class WindowTracker: ObservableObject {
 
     /// Activate (focus) a window by bringing it to front
     public func activateWindow(_ window: TrackedWindow) async throws {
-        // Get the app and bring it to front
-        guard let app = NSRunningApplication(processIdentifier: window.appPid) else {
-            throw WindowTrackerError.appNotFound
-        }
-
-        // Activate the app
-        app.activate(options: [.activateIgnoringOtherApps])
-
-        // Use AX to raise the specific window
+        // Use AX to raise the specific window (this also activates the owning app)
         let axApp = AXUIElement.application(pid: window.appPid)
 
         // Get windows and find the matching one
@@ -147,6 +139,13 @@ public final class WindowTracker: ObservableObject {
                 break
             }
         }
+
+        // Activate the app *after* raising the specific window so macOS
+        // gives it keyboard focus without reordering other windows.
+        guard let app = NSRunningApplication(processIdentifier: window.appPid) else {
+            throw WindowTrackerError.appNotFound
+        }
+        app.activate(options: [.activateIgnoringOtherApps])
 
         // Refresh to update focus state
         refreshManager?.scheduleRefresh(.manual)
