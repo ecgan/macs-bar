@@ -25,9 +25,23 @@ final class MacWindowTrackerTests: XCTestCase {
             isFocused: false
         )
 
-        // Windows with same ID should be equal
-        XCTAssertEqual(window1, window2)
+        // Windows with same ID but different properties should not be equal
+        XCTAssertNotEqual(window1, window2)
+        // But they should have the same hash (hash is based on id only)
         XCTAssertEqual(window1.hashValue, window2.hashValue)
+
+        // Windows with identical properties should be equal
+        let window3 = TrackedWindow(
+            id: 123,
+            title: "Test Window",
+            appName: "TestApp",
+            appBundleId: "com.test.app",
+            appPid: 1234,
+            frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+            monitorId: 1,
+            isFocused: true
+        )
+        XCTAssertEqual(window1, window3)
     }
 
     func testTrackedMonitorEquality() {

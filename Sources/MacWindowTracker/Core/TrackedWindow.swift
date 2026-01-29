@@ -53,5 +53,9 @@ public struct TrackedWindow: Identifiable, Hashable, Sendable {
 
     public static func == (lhs: TrackedWindow, rhs: TrackedWindow) -> Bool {
         lhs.id == rhs.id
+            && lhs.isFocused == rhs.isFocused
+            && lhs.title == rhs.title
+            && lhs.frame == rhs.frame
+            && lhs.monitorId == rhs.monitorId
     }
 }
