@@ -18,6 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var panel: NSPanel?
     var windowTracker: WindowTracker?
     private var windowsCancellable: AnyCancellable?
+    private let keyboardShortcutHandler = KeyboardShortcutHandler()
 
     private let barHeight: CGFloat = 36
 
@@ -29,6 +30,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         createSuperbarPanel(tracker: tracker)
         observeMaximizedWindows(tracker: tracker)
+
+        keyboardShortcutHandler.tracker = tracker
+        keyboardShortcutHandler.start()
 
         Task {
             do {
