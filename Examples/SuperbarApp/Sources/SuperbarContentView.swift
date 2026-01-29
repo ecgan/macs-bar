@@ -36,7 +36,7 @@ struct SuperbarItem: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .frame(maxWidth: 180)
+            .frame(maxWidth: 180, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .fill(window.isFocused
