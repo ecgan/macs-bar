@@ -19,7 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowTracker: WindowTracker?
     private var windowsCancellable: AnyCancellable?
 
-    private let barHeight: CGFloat = 40
+    private let barHeight: CGFloat = 36
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)

@@ -5,14 +5,14 @@ struct SuperbarContentView: View {
     @ObservedObject var tracker: WindowTracker
 
     var body: some View {
-        HStack(spacing: 4) {
-            Spacer()
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
 
             ForEach(tracker.windows) { window in
                 SuperbarItem(window: window, tracker: tracker)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -36,13 +36,15 @@ struct SuperbarItem: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .frame(maxWidth: 180, alignment: .leading)
+            .frame(maxWidth: 172, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 4)
                     .fill(window.isFocused
                         ? Color.white.opacity(0.2)
                         : Color.white.opacity(0.05))
             )
+            .padding(4)
+            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
