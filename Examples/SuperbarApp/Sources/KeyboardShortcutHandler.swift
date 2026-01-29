@@ -9,11 +9,15 @@ final class KeyboardShortcutHandler {
     private var runLoopSource: CFRunLoopSource?
     private var tapThread: Thread?
     nonisolated(unsafe) private var tapRef: CFMachPort?
+    nonisolated(unsafe) private var tapRunLoop: CFRunLoop?
+    private var retainedSelf: Unmanaged<KeyboardShortcutHandler>?
     private var lastActivatedWindowId: CGWindowID?
 
     func start() {
         let eventMask: CGEventMask = 1 << CGEventType.keyDown.rawValue
-        let userInfo = Unmanaged.passUnretained(self).toOpaque()
+        let retained = Unmanaged.passRetained(self)
+        retainedSelf = retained
+        let userInfo = retained.toOpaque()
 
         guard let tap = CGEvent.tapCreate(
             tap: .cghidEventTap,
@@ -27,6 +31,8 @@ final class KeyboardShortcutHandler {
             },
             userInfo: userInfo
         ) else {
+            retained.release()
+            retainedSelf = nil
             print("KeyboardShortcutHandler: Failed to create event tap. Ensure Accessibility permission is granted.")
             return
         }
@@ -37,8 +43,10 @@ final class KeyboardShortcutHandler {
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         runLoopSource = source
 
-        let thread = Thread {
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), source!, .commonModes)
+        let thread = Thread { [weak self] in
+            let rl = CFRunLoopGetCurrent()!
+            self?.tapRunLoop = rl
+            CFRunLoopAddSource(rl, source!, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
             CFRunLoopRun()
         }
@@ -54,11 +62,17 @@ final class KeyboardShortcutHandler {
         if let source = runLoopSource {
             CFRunLoopSourceInvalidate(source)
         }
+        if let rl = tapRunLoop {
+            CFRunLoopStop(rl)
+        }
         tapThread?.cancel()
         tapThread = nil
+        tapRunLoop = nil
         eventTap = nil
         tapRef = nil
         runLoopSource = nil
+        retainedSelf?.release()
+        retainedSelf = nil
     }
 
     private nonisolated func handleCGEvent(_ event: CGEvent) -> Unmanaged<CGEvent>? {
