@@ -45,6 +45,16 @@ extension AXUIElement {
         return value as? Bool
     }
 
+    /// Get the role of this element
+    var role: String? {
+        stringAttribute(kAXRoleAttribute)
+    }
+
+    /// Get the subrole of this element
+    var subrole: String? {
+        stringAttribute(kAXSubroleAttribute)
+    }
+
     /// Get the title of this element
     var title: String? {
         stringAttribute(kAXTitleAttribute)

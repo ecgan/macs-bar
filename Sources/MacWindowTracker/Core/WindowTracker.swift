@@ -188,11 +188,19 @@ public final class WindowTracker: ObservableObject {
         // (kCGWindowName requires Screen Recording permission; AX titles work with just Accessibility)
         let axTitles = Self.axTitleLookup(for: cgWindows)
 
+        // Build AX subrole lookup to filter out popup/dropdown windows
+        // (e.g. Chrome's omnibox dropdown creates a separate window that isn't a standard window)
+        let standardWindowIds = Self.axStandardWindowIds(for: cgWindows)
+
         // Build tracked windows list
         var newWindows: [TrackedWindow] = []
         var appCache: [pid_t: NSRunningApplication] = [:]
 
         for cgWindow in cgWindows {
+            // Skip non-standard windows (popups, dropdowns, dialogs, etc.)
+            if !standardWindowIds.contains(cgWindow.windowId) {
+                continue
+            }
             // Apply size filter
             guard cgWindow.bounds.width >= minimumWindowSize.width,
                   cgWindow.bounds.height >= minimumWindowSize.height else {
@@ -240,6 +248,33 @@ public final class WindowTracker: ObservableObject {
         // Update published state
         self.windows = newWindows
         self.focusedWindowId = newFocusedId
+    }
+
+    /// Build a set of window IDs that are standard windows (AXStandardWindow subrole).
+    /// Popup/dropdown windows (e.g. Chrome's omnibox dropdown) have different subroles
+    /// and should not appear in a taskbar-style UI.
+    private static func axStandardWindowIds(for cgWindows: [CGWindowInfo]) -> Set<CGWindowID> {
+        let pids = Set(cgWindows.map { $0.ownerPid })
+        var result: Set<CGWindowID> = []
+
+        for pid in pids {
+            let axApp = AXUIElement.application(pid: pid)
+            var windowsRef: AnyObject?
+            guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+                  let axWindows = windowsRef as? [AXUIElement] else {
+                continue
+            }
+
+            for axWindow in axWindows {
+                guard let windowId = axWindow.windowId() else { continue }
+                let subrole = axWindow.subrole
+                if subrole == "AXStandardWindow" {
+                    result.insert(windowId)
+                }
+            }
+        }
+
+        return result
     }
 
     /// Build a windowId → title lookup using the Accessibility API.
