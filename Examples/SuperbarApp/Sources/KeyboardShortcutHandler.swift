@@ -1,4 +1,5 @@
 @preconcurrency import Cocoa
+import os
 import MacWindowTracker
 
 @MainActor
@@ -8,8 +9,7 @@ final class KeyboardShortcutHandler {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var tapThread: Thread?
-    nonisolated(unsafe) private var tapRef: CFMachPort?
-    nonisolated(unsafe) private var tapRunLoop: CFRunLoop?
+    private nonisolated let _lock = OSAllocatedUnfairLock<(tapRef: CFMachPort?, tapRunLoop: CFRunLoop?)>(uncheckedState: (nil, nil))
     private var retainedSelf: Unmanaged<KeyboardShortcutHandler>?
     private var lastActivatedWindowId: CGWindowID?
 
@@ -38,14 +38,14 @@ final class KeyboardShortcutHandler {
         }
 
         eventTap = tap
-        tapRef = tap
+        _lock.withLock { $0.tapRef = tap }
 
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         runLoopSource = source
 
         let thread = Thread { [weak self] in
             let rl = CFRunLoopGetCurrent()!
-            self?.tapRunLoop = rl
+            self?._lock.withLock { $0.tapRunLoop = rl }
             CFRunLoopAddSource(rl, source!, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
             CFRunLoopRun()
@@ -62,14 +62,16 @@ final class KeyboardShortcutHandler {
         if let source = runLoopSource {
             CFRunLoopSourceInvalidate(source)
         }
-        if let rl = tapRunLoop {
-            CFRunLoopStop(rl)
+        let rl = _lock.withLock { state -> CFRunLoop? in
+            let rl = state.tapRunLoop
+            state.tapRef = nil
+            state.tapRunLoop = nil
+            return rl
         }
+        if let rl { CFRunLoopStop(rl) }
         tapThread?.cancel()
         tapThread = nil
-        tapRunLoop = nil
         eventTap = nil
-        tapRef = nil
         runLoopSource = nil
         retainedSelf?.release()
         retainedSelf = nil
@@ -93,7 +95,7 @@ final class KeyboardShortcutHandler {
         }
 
         // Re-enable tap if macOS disabled it
-        if let tap = self.tapRef, !CGEvent.tapIsEnabled(tap: tap) {
+        if let tap = self._lock.withLock({ $0.tapRef }), !CGEvent.tapIsEnabled(tap: tap) {
             CGEvent.tapEnable(tap: tap, enable: true)
         }
 
