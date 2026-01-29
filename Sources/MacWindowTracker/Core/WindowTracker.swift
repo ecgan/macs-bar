@@ -234,15 +234,8 @@ public final class WindowTracker: ObservableObject {
             newWindows.append(trackedWindow)
         }
 
-        // Sort by app name, then window title
-        newWindows.sort { lhs, rhs in
-            if lhs.appName != rhs.appName {
-                return lhs.appName.localizedCaseInsensitiveCompare(rhs.appName) == .orderedAscending
-            }
-            let lhsTitle = lhs.title ?? ""
-            let rhsTitle = rhs.title ?? ""
-            return lhsTitle.localizedCaseInsensitiveCompare(rhsTitle) == .orderedAscending
-        }
+        // Sort by window ID (lower IDs were created earlier)
+        newWindows.sort { $0.id < $1.id }
 
         // Update published state
         self.windows = newWindows
