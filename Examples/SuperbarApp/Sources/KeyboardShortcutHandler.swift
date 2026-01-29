@@ -10,7 +10,6 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
     private var tapThread: Thread?
     private let _lock = OSAllocatedUnfairLock<(tapRef: CFMachPort?, tapRunLoop: CFRunLoop?)>(uncheckedState: (nil, nil))
     private var retainedSelf: Unmanaged<KeyboardShortcutHandler>?
-    private var lastActivatedWindowId: CGWindowID?
 
     @MainActor func start() {
         let eventMask: CGEventMask = 1 << CGEventType.keyDown.rawValue
@@ -99,40 +98,31 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
         }
 
         Task { @MainActor [weak self] in
-            self?.activateAdjacentWindow(offset: offset)
+            await self?.activateAdjacentWindow(offset: offset)
         }
 
         return nil
     }
 
-    @MainActor private func activateAdjacentWindow(offset: Int) {
+    @MainActor private func activateAdjacentWindow(offset: Int) async {
         guard let tracker else { return }
         let windows = tracker.windows
 
-        // Use tracker's focused window, falling back to our last activated window
-        // (tracker focus state may lag behind rapid shortcut presses)
-        let focusedIndex: Int
-        if let idx = windows.firstIndex(where: { $0.isFocused }) {
-            focusedIndex = idx
-        } else if let lastId = lastActivatedWindowId,
-                  let idx = windows.firstIndex(where: { $0.id == lastId }) {
-            focusedIndex = idx
-        } else {
-            return
-        }
+        guard let focusedIndex = windows.firstIndex(where: { $0.isFocused }) else { return }
 
         let newIndex = focusedIndex + offset
         guard windows.indices.contains(newIndex) else { return }
 
         let target = windows[newIndex]
-        lastActivatedWindowId = target.id
 
-        // Briefly activate our own app to gain activation authority,
-        // then activateWindow works just like a panel click.
+        // Gain activation authority by briefly activating our own app,
+        // then poll until macOS has processed the activation.
         NSApp.activate(ignoringOtherApps: true)
-
-        Task {
-            try? await tracker.activateWindow(target)
+        for _ in 0..<20 {
+            if NSApp.isActive { break }
+            try? await Task.sleep(for: .milliseconds(10))
         }
+
+        try? await tracker.activateWindow(target)
     }
 }
