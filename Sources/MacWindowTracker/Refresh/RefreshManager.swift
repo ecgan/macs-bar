@@ -2,7 +2,7 @@ import AppKit
 import Combine
 
 /// Events that can trigger a refresh
-public enum RefreshEvent: Sendable {
+public enum RefreshEvent: Sendable, Equatable {
     case axNotification(String)
     case appLaunch
     case appTerminate
@@ -111,10 +111,10 @@ final class RefreshManager {
             }
         )
 
-        // Space change - windows may appear/disappear
+        // Space change - bypass debounce for instant cache swap
         workspaceObservers.append(
             nc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.scheduleRefresh(.spaceChange) }
+                Task { @MainActor in self?.refreshNow(.spaceChange) }
             }
         )
 

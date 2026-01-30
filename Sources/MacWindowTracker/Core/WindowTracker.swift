@@ -29,6 +29,12 @@ public final class WindowTracker: ObservableObject {
     private var refreshManager: RefreshManager?
     private var monitorCancellable: AnyCancellable?
 
+    /// Cache of windows per desktop space, keyed by space ID
+    private var windowsBySpace: [Int: [TrackedWindow]] = [:]
+
+    /// The space ID we were on before the current refresh
+    private var currentSpaceId: Int = 0
+
     // MARK: - Configuration
 
     /// Whether to include windows with empty titles
@@ -76,6 +82,9 @@ public final class WindowTracker: ObservableObject {
         }
         refreshManager?.start()
 
+        // Record initial space
+        currentSpaceId = MacWindowTracker.currentSpaceId()
+
         // Initial refresh
         await performRefresh(event: .manual)
     }
@@ -93,6 +102,8 @@ public final class WindowTracker: ObservableObject {
 
         windows = []
         focusedWindowId = nil
+        windowsBySpace.removeAll()
+        currentSpaceId = 0
     }
 
     /// Manually trigger a refresh
@@ -176,6 +187,19 @@ public final class WindowTracker: ObservableObject {
     }
 
     private func performRefresh(event: RefreshEvent) async {
+        // On space change, immediately swap to cached windows for the new space
+        if event == .spaceChange {
+            // Save current windows under the old space
+            if currentSpaceId != 0 {
+                windowsBySpace[currentSpaceId] = windows
+            }
+            // Switch to new space
+            let newSpaceId = MacWindowTracker.currentSpaceId()
+            currentSpaceId = newSpaceId
+            // Instantly swap to cached windows (or empty if first visit)
+            self.windows = windowsBySpace[newSpaceId] ?? []
+        }
+
         // Get all on-screen windows from CGWindowList
         let cgWindows = CGWindowList.onScreenWindows()
 
@@ -244,9 +268,10 @@ public final class WindowTracker: ObservableObject {
         // Sort by window ID (lower IDs were created earlier)
         newWindows.sort { $0.id < $1.id }
 
-        // Update published state
+        // Update published state and cache
         self.windows = newWindows
         self.focusedWindowId = newFocusedId
+        windowsBySpace[currentSpaceId] = newWindows
     }
 
     /// Build a set of window IDs that are standard windows (AXStandardWindow subrole).
