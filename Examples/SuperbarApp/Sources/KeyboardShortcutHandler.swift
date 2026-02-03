@@ -111,8 +111,7 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
 
         guard let focusedIndex = windows.firstIndex(where: { $0.isFocused }) else { return }
 
-        let newIndex = focusedIndex + offset
-        guard windows.indices.contains(newIndex) else { return }
+        let newIndex = (focusedIndex + offset + windows.count) % windows.count
 
         let target = windows[newIndex]
 
