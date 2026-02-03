@@ -46,3 +46,11 @@ public func allSpaceIds() -> [Int] {
           !spaces.isEmpty else { return [] }
     return spaces
 }
+
+/// Check if a space is a fullscreen space.
+public func isFullScreenSpace(_ spaceId: Int) -> Bool {
+    // Space type 4 = fullscreen spaces only
+    guard let copySpaces = _CGSCopySpaces,
+          let fullscreenSpaces = copySpaces(CGSMainConnectionID(), 4) as? [Int] else { return false }
+    return fullscreenSpaces.contains(spaceId)
+}

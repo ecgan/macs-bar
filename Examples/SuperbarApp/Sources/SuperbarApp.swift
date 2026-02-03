@@ -65,6 +65,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let activeWindows = spaceStates[activeSpaceId]?.windows ?? filteredWindows
             adjustMaximizedWindows(activeWindows, tracker: tracker)
 
+            // Hide panel if an app-controlled fullscreen window is detected
+            updatePanelVisibility(for: activeSpaceId, windows: filteredWindows)
+
             cleanupInvalidPanels()
         }
 
@@ -89,8 +92,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Panel Management
 
     /// Create a panel for a space if one doesn't exist. Returns true if a new panel was created.
+    /// Does not create panels for fullscreen spaces.
     @discardableResult
     private func ensurePanel(forSpace spaceId: Int, initialWindows: [TrackedWindow]) -> Bool {
+        // Don't create panels for fullscreen spaces
+        if MacWindowTracker.isFullScreenSpace(spaceId) { return false }
         guard panels[spaceId] == nil else { return false }
 
         let state = SpaceBarState(spaceId: spaceId) { [weak windowTracker] window in
@@ -131,14 +137,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             height: barHeight
         )
         panel.setFrame(barFrame, display: false)
-        panel.level = .statusBar
+        // Use floating level (3) instead of statusBar (25) so fullscreen windows cover us
+        panel.level = .floating
         panel.isOpaque = false
         panel.backgroundColor = .black
         panel.hasShadow = false
         panel.isMovable = false
         panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.ignoresCycle, .fullScreenAuxiliary, .transient]
+        // Remove .fullScreenAuxiliary so we don't appear on native fullscreen spaces
+        panel.collectionBehavior = [.ignoresCycle, .transient]
     }
 
     // MARK: - Cleanup
@@ -195,6 +203,94 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let newHeight = expectedMaxHeight - barHeight
             tracker.resizeWindow(window, to: CGSize(width: window.frame.width, height: newHeight))
         }
+    }
+
+    // MARK: - Fullscreen Detection
+
+    /// Hide panel when fullscreen is detected.
+    /// Uses multiple detection methods since some apps (VLC) don't expose their fullscreen windows.
+    private func updatePanelVisibility(for spaceId: Int, windows: [TrackedWindow]) {
+        guard let panel = panels[spaceId],
+              let screen = NSScreen.screens.first else { return }
+
+        // Method 1: Check frontmost app's window via Accessibility API
+        let axFullscreen = isFrontmostAppFullscreen(screen: screen)
+
+        // Method 2: Check tracked windows for fullscreen
+        let hasFullscreenWindow = windows.contains { isAppControlledFullscreen(window: $0, screen: screen) }
+
+        let shouldHide = axFullscreen || hasFullscreenWindow
+        panel.alphaValue = shouldHide ? 0 : 1
+    }
+
+    /// Check if frontmost application's focused window is fullscreen using Accessibility API
+    private func isFrontmostAppFullscreen(screen: NSScreen) -> Bool {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
+            return false
+        }
+
+        let appElement = AXUIElementCreateApplication(frontApp.processIdentifier)
+
+        // Get the focused window
+        var focusedWindow: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindow)
+        guard result == .success, let windowElement = focusedWindow else { return false }
+
+        // Check if window is fullscreen via AXFullScreen attribute
+        var isFullscreen: CFTypeRef?
+        let fsResult = AXUIElementCopyAttributeValue(windowElement as! AXUIElement, "AXFullScreen" as CFString, &isFullscreen)
+        if fsResult == .success, let fs = isFullscreen as? Bool, fs {
+            return true
+        }
+
+        // Fallback: Check window size against screen
+        var position: CFTypeRef?
+        var size: CFTypeRef?
+        AXUIElementCopyAttributeValue(windowElement as! AXUIElement, kAXPositionAttribute as CFString, &position)
+        AXUIElementCopyAttributeValue(windowElement as! AXUIElement, kAXSizeAttribute as CFString, &size)
+
+        if let pos = position, let sz = size {
+            var point = CGPoint.zero
+            var winSize = CGSize.zero
+            AXValueGetValue(pos as! AXValue, .cgPoint, &point)
+            AXValueGetValue(sz as! AXValue, .cgSize, &winSize)
+
+            let tolerance: CGFloat = 5
+            return abs(winSize.width - screen.frame.width) <= tolerance
+                && abs(winSize.height - screen.frame.height) <= tolerance
+                && point.y <= tolerance
+        }
+
+        return false
+    }
+
+    /// Check if a window is fullscreen (either native macOS fullscreen or app-controlled).
+    /// Native fullscreen: window starts at menu bar (y ≈ 30) and extends to bottom
+    /// App-controlled fullscreen: window covers entire screen including menu bar (y = 0)
+    private func isAppControlledFullscreen(window: TrackedWindow, screen: NSScreen) -> Bool {
+        let tolerance: CGFloat = 5
+        let screenFrame = screen.frame
+        // Note: window.frame uses Quartz coordinates (origin at top-left, y increases downward)
+        // screenFrame uses Cocoa coordinates but we only care about width/height here
+
+        let coversFullWidth = abs(window.frame.width - screenFrame.width) <= tolerance
+
+        // Check if window extends to the bottom of the screen
+        // In Quartz coords: window bottom = window.origin.y + window.height
+        let windowBottom = window.frame.origin.y + window.frame.height
+        let extendsToBottom = abs(windowBottom - screenFrame.height) <= tolerance
+
+        // Native fullscreen: starts at menu bar (~30px), covers rest of screen
+        // App fullscreen: starts at 0, covers entire screen
+        let menuBarHeight: CGFloat = 30
+        let isNativeFullscreen = window.frame.origin.y <= menuBarHeight + tolerance
+            && window.frame.height >= screenFrame.height - menuBarHeight - tolerance
+        let isAppFullscreen = window.frame.origin.y <= tolerance
+            && abs(window.frame.height - screenFrame.height) <= tolerance
+
+        let isFullscreen = coversFullWidth && extendsToBottom && (isNativeFullscreen || isAppFullscreen)
+
+        return isFullscreen
     }
 
     // MARK: - Screen Changes
