@@ -11,16 +11,22 @@ import Combine
 /// - Mouse click events as fallback (because AX notifications are unreliable)
 @MainActor
 public final class WindowTracker: ObservableObject {
-    // MARK: - Published State
+    // MARK: - State
 
     /// All on-screen windows
-    @Published public private(set) var windows: [TrackedWindow] = []
+    public private(set) var windows: [TrackedWindow] = []
 
     /// The currently focused window ID (nil if no window is focused)
-    @Published public private(set) var focusedWindowId: CGWindowID?
+    public private(set) var focusedWindowId: CGWindowID?
 
     /// All connected monitors
     @Published public private(set) var monitors: [TrackedMonitor] = []
+
+    /// The current space ID (updated each refresh)
+    public private(set) var currentSpaceId: Int = 0
+
+    /// Callback delivering (spaceId, windows) as an atomic snapshot after each refresh.
+    public var onRefreshComplete: ((_ spaceId: Int, _ windows: [TrackedWindow]) -> Void)?
 
     // MARK: - Internal Components
 
@@ -28,12 +34,6 @@ public final class WindowTracker: ObservableObject {
     private var appObserverManager: AppObserverManager?
     private var refreshManager: RefreshManager?
     private var monitorCancellable: AnyCancellable?
-
-    /// Cache of windows per desktop space, keyed by space ID
-    private var windowsBySpace: [Int: [TrackedWindow]] = [:]
-
-    /// The space ID we were on before the current refresh
-    private var currentSpaceId: Int = 0
 
     // MARK: - Configuration
 
@@ -102,7 +102,6 @@ public final class WindowTracker: ObservableObject {
 
         windows = []
         focusedWindowId = nil
-        windowsBySpace.removeAll()
         currentSpaceId = 0
     }
 
@@ -187,18 +186,8 @@ public final class WindowTracker: ObservableObject {
     }
 
     private func performRefresh(event: RefreshEvent) async {
-        // On space change, immediately swap to cached windows for the new space
-        if event == .spaceChange {
-            // Save current windows under the old space
-            if currentSpaceId != 0 {
-                windowsBySpace[currentSpaceId] = windows
-            }
-            // Switch to new space
-            let newSpaceId = MacWindowTracker.currentSpaceId()
-            currentSpaceId = newSpaceId
-            // Instantly swap to cached windows (or empty if first visit)
-            self.windows = windowsBySpace[newSpaceId] ?? []
-        }
+        // Update current space ID
+        currentSpaceId = MacWindowTracker.currentSpaceId()
 
         // Get all on-screen windows from CGWindowList
         let cgWindows = CGWindowList.onScreenWindows()
@@ -268,10 +257,10 @@ public final class WindowTracker: ObservableObject {
         // Sort by window ID (lower IDs were created earlier)
         newWindows.sort { $0.id < $1.id }
 
-        // Update published state and cache
+        // Update state and fire callback
         self.windows = newWindows
         self.focusedWindowId = newFocusedId
-        windowsBySpace[currentSpaceId] = newWindows
+        onRefreshComplete?(currentSpaceId, newWindows)
     }
 
     /// Build a set of window IDs that are standard windows (AXStandardWindow subrole).

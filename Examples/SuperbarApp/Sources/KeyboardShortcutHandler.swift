@@ -4,6 +4,7 @@ import MacWindowTracker
 
 final class KeyboardShortcutHandler: @unchecked Sendable {
     @MainActor weak var tracker: WindowTracker?
+    @MainActor var currentSpaceState: SpaceBarState?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -105,8 +106,8 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
     }
 
     @MainActor private func activateAdjacentWindow(offset: Int) async {
-        guard let tracker else { return }
-        let windows = tracker.windows
+        guard let tracker, let currentSpaceState else { return }
+        let windows = currentSpaceState.windows
 
         guard let focusedIndex = windows.firstIndex(where: { $0.isFocused }) else { return }
 

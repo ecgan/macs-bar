@@ -2,14 +2,14 @@ import SwiftUI
 import MacWindowTracker
 
 struct SuperbarContentView: View {
-    @ObservedObject var tracker: WindowTracker
+    @ObservedObject var state: SpaceBarState
 
     var body: some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            ForEach(tracker.windows) { window in
-                SuperbarItem(window: window, tracker: tracker)
+            ForEach(state.windows) { window in
+                SuperbarItem(window: window, state: state)
             }
 
             Spacer(minLength: 0)
@@ -20,7 +20,7 @@ struct SuperbarContentView: View {
 
 struct SuperbarItem: View {
     let window: TrackedWindow
-    let tracker: WindowTracker
+    let state: SpaceBarState
 
     var body: some View {
         Button(action: activateWindow) {
@@ -52,11 +52,7 @@ struct SuperbarItem: View {
 
     private func activateWindow() {
         Task {
-            do {
-                try await tracker.activateWindow(window)
-            } catch {
-                print("Failed to activate window: \(error)")
-            }
+            await state.activateWindow(window)
         }
     }
 }
