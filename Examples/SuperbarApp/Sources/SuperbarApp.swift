@@ -31,7 +31,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create initial panel for the current space (starts empty, fills on first refresh)
         let initialSpace = MacWindowTracker.currentSpaceId()
         activeSpaceId = initialSpace
-        _ = ensurePanel(forSpace: initialSpace, initialWindows: [])
+        if let screen = NSScreen.screens.first {
+            _ = ensurePanel(forSpace: initialSpace, initialWindows: [], screen: screen)
+        }
 
         keyboardShortcutHandler.tracker = tracker
         keyboardShortcutHandler.start()
@@ -39,48 +41,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         tracker.onRefreshComplete = { [weak self] spaceId, windows in
             guard let self else { return }
 
-            // When "Displays have separate Spaces" is OFF, all displays share one space,
-            // so show windows from all displays. Otherwise, filter to primary display only.
-            let filteredWindows: [TrackedWindow]
-            if MacWindowTracker.displaysShareSpace() {
-                filteredWindows = windows
-            } else {
-                let primaryScreenFrame = NSScreen.screens.first?.frame ?? .zero
-                filteredWindows = windows.filter { window in
-                    window.frame.intersects(primaryScreenFrame)
-                }
-            }
-
             // Update activeSpaceId from live CGS value
             activeSpaceId = MacWindowTracker.currentSpaceId()
 
-            // Check fullscreen BEFORE updating windows to prevent flicker.
-            // If we're about to hide the panel, do it before SwiftUI renders the new window list.
-            let shouldHideForFullscreen = shouldHidePanelForFullscreen(windows: filteredWindows)
-            if shouldHideForFullscreen {
-                panels[activeSpaceId]?.alphaValue = 0
-            }
-
-            // Update the snapshot space's panel (skip creation if fullscreen detected)
-            let isNewPanel = shouldHideForFullscreen ? false : ensurePanel(forSpace: spaceId, initialWindows: filteredWindows)
-            if !isNewPanel {
-                spaceStates[spaceId]?.windows = filteredWindows
-            }
-
-            // Ensure the active space has a panel (rapid switching: A→B→C)
-            // But skip if fullscreen is detected - don't create panels for fullscreen spaces
-            if spaceStates[activeSpaceId] == nil && !shouldHideForFullscreen {
-                _ = ensurePanel(forSpace: activeSpaceId, initialWindows: [])
+            if MacWindowTracker.displaysShareSpace() {
+                // Shared space mode: one panel on primary display, showing all windows
+                guard let screen = NSScreen.screens.first else { return }
+                updatePanelForSpace(spaceId, windows: windows, screen: screen)
+            } else {
+                // Separate spaces mode: one panel per display's current space
+                let displaySpaces = MacWindowTracker.spacesPerDisplay()
+                for screen in NSScreen.screens {
+                    guard let uuid = MacWindowTracker.displayUUID(for: screen),
+                          let currentSpaceId = displaySpaces[uuid]?.first else { continue }
+                    let screenWindows = windows.filter { $0.frame.intersects(screen.quartzFrame) }
+                    updatePanelForSpace(currentSpaceId, windows: screenWindows, screen: screen)
+                }
             }
 
             keyboardShortcutHandler.currentSpaceState = spaceStates[activeSpaceId]
 
             // Adjust maximized windows using the active space's data
-            let activeWindows = spaceStates[activeSpaceId]?.windows ?? filteredWindows
+            let activeWindows = spaceStates[activeSpaceId]?.windows ?? windows
             adjustMaximizedWindows(activeWindows, tracker: tracker)
-
-            // Update final panel visibility (may show panel if fullscreen ended)
-            updatePanelVisibility(for: activeSpaceId, windows: filteredWindows)
 
             cleanupInvalidPanels()
         }
@@ -108,7 +91,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Create a panel for a space if one doesn't exist. Returns true if a new panel was created.
     /// Does not create panels for fullscreen spaces.
     @discardableResult
-    private func ensurePanel(forSpace spaceId: Int, initialWindows: [TrackedWindow]) -> Bool {
+    private func ensurePanel(forSpace spaceId: Int, initialWindows: [TrackedWindow], screen: NSScreen) -> Bool {
         // Don't create panels for fullscreen spaces
         if MacWindowTracker.isFullScreenSpace(spaceId) { return false }
         guard panels[spaceId] == nil else { return false }
@@ -124,7 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        configurePanelStyle(panel)
+        configurePanelStyle(panel, screen: screen)
 
         let contentView = SuperbarContentView(state: state)
         panel.contentView = NSHostingView(rootView: contentView)
@@ -142,7 +125,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             // Don't reveal if fullscreen is detected by other methods
-            if self.shouldHidePanelForFullscreen(windows: self.spaceStates[spaceId]?.windows ?? []) {
+            if self.shouldHidePanelForFullscreen(windows: self.spaceStates[spaceId]?.windows ?? [], screen: screen) {
                 return
             }
             panel.alphaValue = 1
@@ -153,8 +136,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    private func configurePanelStyle(_ panel: NSPanel) {
-        let screen = NSScreen.screens.first ?? NSScreen.main!
+    private func configurePanelStyle(_ panel: NSPanel, screen: NSScreen) {
         let barFrame = NSRect(
             x: screen.frame.origin.x,
             y: screen.frame.origin.y,
@@ -172,6 +154,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.hidesOnDeactivate = false
         // Remove .fullScreenAuxiliary so we don't appear on native fullscreen spaces
         panel.collectionBehavior = [.ignoresCycle, .transient]
+    }
+
+    /// Update or create panel for a space on the given screen.
+    /// Handles fullscreen detection and panel visibility.
+    private func updatePanelForSpace(_ spaceId: Int, windows: [TrackedWindow], screen: NSScreen) {
+        // Check fullscreen BEFORE updating windows to prevent flicker
+        let shouldHideForFullscreen = shouldHidePanelForFullscreen(windows: windows, screen: screen)
+        if shouldHideForFullscreen {
+            panels[spaceId]?.alphaValue = 0
+        }
+
+        // Update or create the panel (skip creation if fullscreen detected)
+        let isNewPanel = shouldHideForFullscreen ? false : ensurePanel(forSpace: spaceId, initialWindows: windows, screen: screen)
+        if !isNewPanel {
+            spaceStates[spaceId]?.windows = windows
+        }
+
+        // Update final panel visibility (may show panel if fullscreen ended)
+        updatePanelVisibility(for: spaceId, windows: windows, screen: screen)
     }
 
     // MARK: - Cleanup
@@ -234,9 +235,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quick check if we should hide the panel for fullscreen.
     /// Called BEFORE updating windows to prevent flicker during fullscreen transitions.
-    private func shouldHidePanelForFullscreen(windows: [TrackedWindow]) -> Bool {
-        guard let screen = NSScreen.screens.first else { return false }
-
+    private func shouldHidePanelForFullscreen(windows: [TrackedWindow], screen: NSScreen) -> Bool {
         // Method 1: Check if the active space is a native fullscreen space (Chrome, Finder, etc.)
         if MacWindowTracker.isFullScreenSpace(activeSpaceId) {
             return true
@@ -257,9 +256,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Hide panel when fullscreen is detected.
     /// Uses multiple detection methods since some apps (VLC) don't expose their fullscreen windows.
-    private func updatePanelVisibility(for spaceId: Int, windows: [TrackedWindow]) {
-        guard let panel = panels[spaceId],
-              let screen = NSScreen.screens.first else { return }
+    private func updatePanelVisibility(for spaceId: Int, windows: [TrackedWindow], screen: NSScreen) {
+        guard let panel = panels[spaceId] else { return }
 
         // Method 1: Check frontmost app's window via Accessibility API
         let axFullscreen = isFrontmostAppFullscreen(screen: screen)
@@ -346,5 +344,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func screenDidChange() {
         activeSpaceId = MacWindowTracker.currentSpaceId()
         resetAllPanels()
+    }
+}
+
+// MARK: - NSScreen Coordinate Conversion
+
+private extension NSScreen {
+    /// Convert screen frame from Cocoa coordinates (origin at bottom-left of primary screen,
+    /// Y increases upward) to Quartz coordinates (origin at top-left of primary screen,
+    /// Y increases downward). This matches how TrackedWindow.frame is reported.
+    var quartzFrame: CGRect {
+        guard let mainScreen = NSScreen.screens.first else { return frame }
+        let mainHeight = mainScreen.frame.height
+        return CGRect(
+            x: frame.origin.x,
+            y: mainHeight - frame.origin.y - frame.height,
+            width: frame.width,
+            height: frame.height
+        )
     }
 }
