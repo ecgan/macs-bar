@@ -48,14 +48,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Update activeSpaceId from live CGS value
             activeSpaceId = MacWindowTracker.currentSpaceId()
 
-            // Update the snapshot space's panel
-            let isNewPanel = ensurePanel(forSpace: spaceId, initialWindows: filteredWindows)
+            // Check fullscreen BEFORE updating windows to prevent flicker.
+            // If we're about to hide the panel, do it before SwiftUI renders the new window list.
+            let shouldHideForFullscreen = shouldHidePanelForFullscreen(windows: filteredWindows)
+            if shouldHideForFullscreen {
+                panels[activeSpaceId]?.alphaValue = 0
+            }
+
+            // Update the snapshot space's panel (skip creation if fullscreen detected)
+            let isNewPanel = shouldHideForFullscreen ? false : ensurePanel(forSpace: spaceId, initialWindows: filteredWindows)
             if !isNewPanel {
                 spaceStates[spaceId]?.windows = filteredWindows
             }
 
             // Ensure the active space has a panel (rapid switching: A→B→C)
-            if spaceStates[activeSpaceId] == nil {
+            // But skip if fullscreen is detected - don't create panels for fullscreen spaces
+            if spaceStates[activeSpaceId] == nil && !shouldHideForFullscreen {
                 _ = ensurePanel(forSpace: activeSpaceId, initialWindows: [])
             }
 
@@ -65,7 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let activeWindows = spaceStates[activeSpaceId]?.windows ?? filteredWindows
             adjustMaximizedWindows(activeWindows, tracker: tracker)
 
-            // Hide panel if an app-controlled fullscreen window is detected
+            // Update final panel visibility (may show panel if fullscreen ended)
             updatePanelVisibility(for: activeSpaceId, windows: filteredWindows)
 
             cleanupInvalidPanels()
@@ -116,10 +124,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = NSHostingView(rootView: contentView)
 
         // Deferred reveal: hide → order front → move to space → reveal next run loop turn
+        // Check fullscreen again before revealing since space status may have changed
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         MacWindowTracker.moveWindowToSpace(panel, spaceId: spaceId)
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            // Don't reveal if we're now on a fullscreen space
+            let currentSpace = MacWindowTracker.currentSpaceId()
+            if MacWindowTracker.isFullScreenSpace(currentSpace) || MacWindowTracker.isFullScreenSpace(spaceId) {
+                return
+            }
+            // Don't reveal if fullscreen is detected by other methods
+            if self.shouldHidePanelForFullscreen(windows: self.spaceStates[spaceId]?.windows ?? []) {
+                return
+            }
             panel.alphaValue = 1
         }
 
@@ -206,6 +225,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Fullscreen Detection
+
+    /// Quick check if we should hide the panel for fullscreen.
+    /// Called BEFORE updating windows to prevent flicker during fullscreen transitions.
+    private func shouldHidePanelForFullscreen(windows: [TrackedWindow]) -> Bool {
+        guard let screen = NSScreen.screens.first else { return false }
+
+        // Method 1: Check if the active space is a native fullscreen space (Chrome, Finder, etc.)
+        if MacWindowTracker.isFullScreenSpace(activeSpaceId) {
+            return true
+        }
+
+        // Method 2: Check frontmost app's window via Accessibility API
+        if isFrontmostAppFullscreen(screen: screen) {
+            return true
+        }
+
+        // Method 3: Check tracked windows for app-controlled fullscreen
+        if windows.contains(where: { isAppControlledFullscreen(window: $0, screen: screen) }) {
+            return true
+        }
+
+        return false
+    }
 
     /// Hide panel when fullscreen is detected.
     /// Uses multiple detection methods since some apps (VLC) don't expose their fullscreen windows.
