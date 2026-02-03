@@ -84,6 +84,18 @@ extension AXUIElement {
         guard let value = AXValueCreate(.cgSize, &cfSize) else { return false }
         return AXUIElementSetAttributeValue(self, kAXSizeAttribute as CFString, value) == .success
     }
+
+    /// Close this window
+    @discardableResult
+    func close() -> Bool {
+        // Get the close button and press it
+        var closeButtonRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(self, kAXCloseButtonAttribute as CFString, &closeButtonRef) == .success,
+              let closeButton = closeButtonRef else {
+            return false
+        }
+        return AXUIElementPerformAction(closeButton as! AXUIElement, kAXPressAction as CFString) == .success
+    }
 }
 
 // MARK: - Private API Declaration

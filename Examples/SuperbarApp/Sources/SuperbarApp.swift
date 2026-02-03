@@ -96,9 +96,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if MacWindowTracker.isFullScreenSpace(spaceId) { return false }
         guard panels[spaceId] == nil else { return false }
 
-        let state = SpaceBarState(spaceId: spaceId) { [weak windowTracker] window in
-            try? await windowTracker?.activateWindow(window)
-        }
+        let state = SpaceBarState(
+            spaceId: spaceId,
+            onActivate: { [weak windowTracker] window in
+                try? await windowTracker?.activateWindow(window)
+            },
+            onClose: { [weak windowTracker] window in
+                windowTracker?.closeWindow(window)
+            }
+        )
         state.windows = initialWindows
 
         let panel = NSPanel(

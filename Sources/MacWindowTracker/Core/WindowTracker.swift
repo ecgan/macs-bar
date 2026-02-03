@@ -161,6 +161,27 @@ public final class WindowTracker: ObservableObject {
         refreshManager?.scheduleRefresh(.manual)
     }
 
+    /// Close a window
+    public func closeWindow(_ window: TrackedWindow) {
+        let axApp = AXUIElement.application(pid: window.appPid)
+
+        var windowsRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let axWindows = windowsRef as? [AXUIElement] else {
+            return
+        }
+
+        for axWindow in axWindows {
+            if axWindow.windowId() == window.id {
+                axWindow.close()
+                break
+            }
+        }
+
+        // Refresh to update window list
+        refreshManager?.scheduleRefresh(.manual)
+    }
+
     /// Resize a window to the given size
     public func resizeWindow(_ window: TrackedWindow, to size: CGSize) {
         let axApp = AXUIElement.application(pid: window.appPid)

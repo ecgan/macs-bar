@@ -15,6 +15,12 @@ struct SuperbarContentView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button("Quit") {
+                NSApp.terminate(nil)
+            }
+        }
     }
 }
 
@@ -48,6 +54,11 @@ struct SuperbarItem: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Close Window") {
+                state.closeWindow(window)
+            }
+        }
     }
 
     private func activateWindow() {
