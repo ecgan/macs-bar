@@ -54,3 +54,11 @@ public func isFullScreenSpace(_ spaceId: Int) -> Bool {
           let fullscreenSpaces = copySpaces(CGSMainConnectionID(), 4) as? [Int] else { return false }
     return fullscreenSpaces.contains(spaceId)
 }
+
+/// Check if displays share a single space ("Displays have separate Spaces" is OFF in System Settings).
+/// When true, all displays show the same space and windows from all displays should be shown together.
+public func displaysShareSpace() -> Bool {
+    // spans-displays: 1 = spaces span across displays (separate spaces OFF)
+    //                 0 or missing = each display has its own spaces (separate spaces ON)
+    return UserDefaults(suiteName: "com.apple.spaces")?.bool(forKey: "spans-displays") ?? false
+}

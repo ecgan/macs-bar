@@ -39,10 +39,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         tracker.onRefreshComplete = { [weak self] spaceId, windows in
             guard let self else { return }
 
-            // Filter to primary display only
-            let primaryScreenFrame = NSScreen.screens.first?.frame ?? .zero
-            let filteredWindows = windows.filter { window in
-                window.frame.intersects(primaryScreenFrame)
+            // When "Displays have separate Spaces" is OFF, all displays share one space,
+            // so show windows from all displays. Otherwise, filter to primary display only.
+            let filteredWindows: [TrackedWindow]
+            if MacWindowTracker.displaysShareSpace() {
+                filteredWindows = windows
+            } else {
+                let primaryScreenFrame = NSScreen.screens.first?.frame ?? .zero
+                filteredWindows = windows.filter { window in
+                    window.frame.intersects(primaryScreenFrame)
+                }
             }
 
             // Update activeSpaceId from live CGS value
