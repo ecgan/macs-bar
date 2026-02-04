@@ -252,9 +252,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
 
-        // Method 3: Check tracked windows for app-controlled fullscreen
-        if windows.contains(where: { isAppControlledFullscreen(window: $0, screen: screen) }) {
-            return true
+        // Method 3: Check frontmost app's windows for app-controlled fullscreen (e.g., VLC)
+        // Only check windows belonging to the frontmost app, not all windows on screen.
+        // This prevents false positives from maximized background windows.
+        if let frontApp = NSWorkspace.shared.frontmostApplication {
+            let frontAppWindows = windows.filter { $0.appPid == frontApp.processIdentifier }
+            if frontAppWindows.contains(where: { isAppControlledFullscreen(window: $0, screen: screen) }) {
+                return true
+            }
         }
 
         return false
@@ -268,8 +273,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Method 1: Check frontmost app's window via Accessibility API
         let axFullscreen = isFrontmostAppFullscreen(screen: screen)
 
-        // Method 2: Check tracked windows for fullscreen
-        let hasFullscreenWindow = windows.contains { isAppControlledFullscreen(window: $0, screen: screen) }
+        // Method 2: Check frontmost app's windows for app-controlled fullscreen
+        // Only check windows belonging to the frontmost app, not all windows on screen.
+        var hasFullscreenWindow = false
+        if let frontApp = NSWorkspace.shared.frontmostApplication {
+            let frontAppWindows = windows.filter { $0.appPid == frontApp.processIdentifier }
+            hasFullscreenWindow = frontAppWindows.contains { isAppControlledFullscreen(window: $0, screen: screen) }
+        }
 
         let shouldHide = axFullscreen || hasFullscreenWindow
         panel.alphaValue = shouldHide ? 0 : 1
@@ -287,6 +297,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var focusedWindow: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindow)
         guard result == .success, let windowElement = focusedWindow else { return false }
+
+        // Verify this is actually a window, not the desktop or other UI element
+        // When clicking the desktop, Finder reports the desktop as "focused window" but it's not a real window
+        let axWindow = windowElement as! AXUIElement
+        var roleRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axWindow, kAXRoleAttribute as CFString, &roleRef) == .success,
+           let role = roleRef as? String, role != "AXWindow" {
+            return false
+        }
 
         // Check if window is fullscreen via AXFullScreen attribute
         var isFullscreen: CFTypeRef?
