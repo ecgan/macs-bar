@@ -2,7 +2,7 @@ import SwiftUI
 import MacWindowTracker
 
 @main
-struct SuperbarApp: App {
+struct MacsBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -115,7 +115,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         configurePanelStyle(panel, screen: screen)
 
-        let contentView = SuperbarContentView(state: state)
+        let contentView = MacsBarContentView(state: state)
         panel.contentView = NSHostingView(rootView: contentView)
 
         // Deferred reveal: hide → order front → move to space → reveal next run loop turn
@@ -187,7 +187,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let validSpaces = MacWindowTracker.allSpaceIds()
 
         guard !validSpaces.isEmpty else {
-            NSLog("[Superbar] cleanupInvalidPanels: allSpaceIds() returned empty, skipping cleanup")
+            NSLog("[MacsBar] cleanupInvalidPanels: allSpaceIds() returned empty, skipping cleanup")
             return
         }
 
@@ -220,7 +220,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menuBarHeight = mainMonitor.visibleFrame.origin.y
         let expectedMaxHeight = mainMonitor.frame.height - menuBarHeight
-        let superbarTop = mainMonitor.frame.maxY - barHeight
+        let macsBarTop = mainMonitor.frame.maxY - barHeight
         let tolerance: CGFloat = 2
 
         for window in windows {
@@ -230,7 +230,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let heightMatches = abs(window.frame.height - expectedMaxHeight) <= tolerance
             guard widthMatches && heightMatches else { continue }
 
-            guard window.frame.maxY > superbarTop else { continue }
+            guard window.frame.maxY > macsBarTop else { continue }
 
             let newHeight = expectedMaxHeight - barHeight
             tracker.resizeWindow(window, to: CGSize(width: window.frame.width, height: newHeight))

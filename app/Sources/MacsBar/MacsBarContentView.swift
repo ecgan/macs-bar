@@ -1,7 +1,7 @@
 import SwiftUI
 import MacWindowTracker
 
-struct SuperbarContentView: View {
+struct MacsBarContentView: View {
     @ObservedObject var state: SpaceBarState
 
     var body: some View {
@@ -9,7 +9,7 @@ struct SuperbarContentView: View {
             Spacer(minLength: 0)
 
             ForEach(state.windows) { window in
-                SuperbarItem(window: window, state: state)
+                MacsBarItem(window: window, state: state)
             }
 
             Spacer(minLength: 0)
@@ -24,7 +24,7 @@ struct SuperbarContentView: View {
     }
 }
 
-struct SuperbarItem: View {
+struct MacsBarItem: View {
     let window: TrackedWindow
     let state: SpaceBarState
 

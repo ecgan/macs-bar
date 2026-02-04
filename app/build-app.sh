@@ -3,9 +3,9 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/.build/release"
-APP_DIR="$SCRIPT_DIR/SuperbarApp.app"
+APP_DIR="$SCRIPT_DIR/MacsBar.app"
 
-echo "Building SuperbarApp..."
+echo "Building MacsBar..."
 cd "$SCRIPT_DIR"
 swift build -c release
 
@@ -14,7 +14,7 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
-cp "$BUILD_DIR/SuperbarApp" "$APP_DIR/Contents/MacOS/SuperbarApp"
+cp "$BUILD_DIR/MacsBar" "$APP_DIR/Contents/MacOS/MacsBar"
 cp "$SCRIPT_DIR/Info.plist" "$APP_DIR/Contents/Info.plist"
 
 echo "Done! App bundle created at: $APP_DIR"

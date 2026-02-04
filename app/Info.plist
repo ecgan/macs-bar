@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.macwindowtracker.superbar</string>
+    <string>com.macsbar.app</string>
     <key>CFBundleName</key>
-    <string>SuperbarApp</string>
+    <string>Macs Bar</string>
     <key>CFBundleExecutable</key>
-    <string>SuperbarApp</string>
+    <string>MacsBar</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
@@ -21,6 +21,6 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>SuperbarApp needs Screen Recording access to read window titles.</string>
+    <string>Macs Bar needs Screen Recording access to read window titles.</string>
 </dict>
 </plist>
