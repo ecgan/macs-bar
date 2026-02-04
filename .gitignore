@@ -23,3 +23,8 @@ xcuserdata/
 # IDE
 *.swp
 *~
+.vscode/
+.claude/
+
+# Build artifacts
+*.app/
