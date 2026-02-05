@@ -6,6 +6,8 @@ struct MacsBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
+        // Note: SwiftUI Settings scene doesn't work with LSUIElement apps (.accessory policy)
+        // Using custom SettingsWindowController instead
         Settings {
             EmptyView()
         }
@@ -18,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var spaceStates: [Int: SpaceBarState] = [:]
     var windowTracker: WindowTracker?
     private let keyboardShortcutHandler = KeyboardShortcutHandler()
+    let shortcutStorage = ShortcutStorage()
     private var activeSpaceId: Int = 0
 
     private let barHeight: CGFloat = 36
@@ -36,6 +39,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         keyboardShortcutHandler.tracker = tracker
+        keyboardShortcutHandler.shortcutStorage = shortcutStorage
         keyboardShortcutHandler.start()
 
         tracker.onRefreshComplete = { [weak self] spaceId, windows in

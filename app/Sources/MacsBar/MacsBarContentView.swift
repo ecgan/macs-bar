@@ -17,6 +17,10 @@ struct MacsBarContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .contextMenu {
+            Button("Settings...") {
+                openSettings()
+            }
+            Divider()
             Button("Quit") {
                 NSApp.terminate(nil)
             }
@@ -85,4 +89,10 @@ struct AppIcon: View {
                 .foregroundColor(.gray)
         }
     }
+}
+
+// MARK: - Settings Helper
+
+private func openSettings() {
+    SettingsWindowController.shared.showSettings()
 }
