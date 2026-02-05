@@ -18,9 +18,14 @@ struct MacsBarApp: App {
 
 /// Shared menu content for menu bar and context menus
 struct AppContextMenu: View {
+    @Environment(\.openSettings) private var openSettings
+
     var body: some View {
-        SettingsLink {
-            Text("Settings...")
+        Button("Settings...") {
+            // Activate the app first, then open settings
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate()
+            openSettings()
         }
         .keyboardShortcut(",", modifiers: .command)
 
