@@ -155,7 +155,7 @@ public final class WindowTracker: ObservableObject {
         guard let app = NSRunningApplication(processIdentifier: window.appPid) else {
             throw WindowTrackerError.appNotFound
         }
-        app.activate(options: [.activateIgnoringOtherApps])
+        app.activate()
 
         // Refresh to update focus state
         refreshManager?.scheduleRefresh(.manual)

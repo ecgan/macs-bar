@@ -15,8 +15,8 @@ struct GeneralSettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            .onChange(of: launchAtLogin) { newValue in
-                updateLaunchAtLogin(enabled: newValue)
+            .onChange(of: launchAtLogin) {
+                updateLaunchAtLogin(enabled: launchAtLogin)
             }
 
             Toggle(isOn: $checkForUpdates) {
