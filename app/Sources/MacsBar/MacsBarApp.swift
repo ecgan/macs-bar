@@ -21,11 +21,21 @@ struct AppContextMenu: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        // Note: We intentionally stay as .accessory and don't switch to .regular when
+        // opening Settings. This is the common pattern for menu bar utility apps (e.g.,
+        // Rectangle, Magnet). The tradeoff is no Cmd+Tab or Window menu, but it avoids
+        // complexity with activation policy switching and edge cases with window tracking.
         Button("Settings...") {
-            // Activate the app first, then open settings
-            NSApp.setActivationPolicy(.regular)
-            NSApp.activate()
             openSettings()
+            // Bring settings window to front if already open (openSettings() alone won't do this)
+            DispatchQueue.main.async {
+                if let window = NSApp.windows.first(where: {
+                    $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window"
+                }) {
+                    window.makeKeyAndOrderFront(nil)
+                    NSApp.activate()
+                }
+            }
         }
         .keyboardShortcut(",", modifiers: .command)
 
