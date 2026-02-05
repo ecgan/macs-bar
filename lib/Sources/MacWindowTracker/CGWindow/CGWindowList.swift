@@ -1,6 +1,19 @@
 import CoreGraphics
 import AppKit
 
+// MARK: - NSRunningApplication Extension
+
+extension NSRunningApplication {
+    /// Whether this app's windows should be tracked.
+    /// Includes both regular (Dock) apps and accessory (menu bar/utility) apps.
+    /// Excludes prohibited apps (daemons, XPC services, background processes).
+    var isTrackable: Bool {
+        activationPolicy != .prohibited
+    }
+}
+
+// MARK: - CGWindowInfo
+
 /// Raw window information from CGWindowListCopyWindowInfo
 struct CGWindowInfo {
     let windowId: CGWindowID
@@ -69,8 +82,8 @@ enum CGWindowList {
         NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
     }
 
-    /// Get all running applications
+    /// Get all running applications (excludes prohibited/daemon apps)
     static func runningApplications() -> [NSRunningApplication] {
-        NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }
+        NSWorkspace.shared.runningApplications.filter { $0.isTrackable }
     }
 }

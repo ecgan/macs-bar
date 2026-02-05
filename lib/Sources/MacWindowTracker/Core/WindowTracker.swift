@@ -245,16 +245,13 @@ public final class WindowTracker: ObservableObject {
                 continue
             }
 
-            // Skip windows from non-regular apps.
-            // Only regular apps (those that appear in the Dock) have user-manageable windows.
-            // This filters out background utilities (e.g. "borders"), overlay apps, and
-            // unbundled processes that aren't proper macOS apps.
+            // Skip windows from non-trackable apps (daemons, XPC services, etc.)
             let app: NSRunningApplication? = appCache[cgWindow.ownerPid] ?? {
                 let resolved = NSRunningApplication(processIdentifier: cgWindow.ownerPid)
                 if let resolved { appCache[cgWindow.ownerPid] = resolved }
                 return resolved
             }()
-            guard let app, app.activationPolicy == .regular else {
+            guard let app, app.isTrackable else {
                 continue
             }
 

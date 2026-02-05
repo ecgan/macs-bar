@@ -130,11 +130,11 @@ final class AppObserverManager {
         self.onNotification = onNotification
     }
 
-    /// Start observing all running regular applications
+    /// Start observing all trackable running applications
     func start() {
         // Observe existing apps
         for app in NSWorkspace.shared.runningApplications {
-            guard app.activationPolicy == .regular else { continue }
+            guard app.isTrackable else { continue }
             addObserver(for: app)
         }
 
@@ -144,7 +144,7 @@ final class AppObserverManager {
         workspaceObservers.append(
             nc.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] notification in
                 guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                      app.activationPolicy == .regular else { return }
+                      app.isTrackable else { return }
                 Task { @MainActor in self?.addObserver(for: app) }
             }
         )
