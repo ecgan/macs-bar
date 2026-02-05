@@ -28,6 +28,14 @@ public final class WindowTracker: ObservableObject {
     /// Callback delivering (spaceId, windows) as an atomic snapshot after each refresh.
     public var onRefreshComplete: ((_ spaceId: Int, _ windows: [TrackedWindow]) -> Void)?
 
+    /// Called before window activation begins. Use to prepare UI (e.g., hide windows that
+    /// shouldn't flash during NSApp.activate). Receives the target window being activated.
+    public var willActivateWindow: ((_ target: TrackedWindow) -> Void)?
+
+    /// Called after window activation completes. Use to restore UI state.
+    /// Receives the target window that was activated.
+    public var didActivateWindow: ((_ target: TrackedWindow) -> Void)?
+
     // MARK: - Internal Components
 
     private let monitorManager: MonitorManager
@@ -132,6 +140,9 @@ public final class WindowTracker: ObservableObject {
 
     /// Activate (focus) a window by bringing it to front
     public func activateWindow(_ window: TrackedWindow) async throws {
+        // Allow app to prepare UI before activation (e.g., hide Settings window)
+        willActivateWindow?(window)
+
         // Gain activation authority by briefly activating our own app first.
         // This prevents AX calls from blocking when querying backgrounded apps
         // (especially accessory apps like Rectangle which become unresponsive to AX).
@@ -150,6 +161,7 @@ public final class WindowTracker: ObservableObject {
         var windowsRef: AnyObject?
         guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else {
+            didActivateWindow?(window)
             return
         }
 
@@ -164,9 +176,13 @@ public final class WindowTracker: ObservableObject {
         // Activate the app *after* raising the specific window so macOS
         // gives it keyboard focus without reordering other windows.
         guard let app = NSRunningApplication(processIdentifier: window.appPid) else {
+            didActivateWindow?(window)
             throw WindowTrackerError.appNotFound
         }
         app.activate()
+
+        // Allow app to restore UI after activation
+        didActivateWindow?(window)
 
         // Refresh to update focus state
         refreshManager?.scheduleRefresh(.manual)

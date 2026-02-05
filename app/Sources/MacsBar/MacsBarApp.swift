@@ -79,6 +79,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardShortcutHandler.shortcutStorage = shortcutStorage
         keyboardShortcutHandler.start()
 
+        // Hide Settings window during activation to prevent flash when NSApp.activate() is called
+        // (but only if we're not activating the Settings window itself)
+        //
+        // Known issues:
+        // - UI hang may occur when Rectangle app's settings window is open. Closing Rectangle's
+        //   settings window resolves this. This appears to be due to Rectangle (an accessory app)
+        //   becoming unresponsive to AX calls when its settings window is visible.
+        // - Our Settings window gets sent to the back when activating other windows. This is a
+        //   tradeoff to fix the z-order issue where Settings would incorrectly become the second
+        //   frontmost window. Users can bring Settings back to front by clicking on it.
+        tracker.willActivateWindow = { (target: TrackedWindow) in
+            // Skip if target is our own app (e.g., Settings window)
+            let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
+            if isOwnApp { return }
+
+            if let settingsWindow = NSApp.windows.first(where: {
+                $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window"
+            }), settingsWindow.isVisible {
+                settingsWindow.alphaValue = 0
+            }
+        }
+
+        // Restore Settings window after activation, but order it to back to fix z-order
+        tracker.didActivateWindow = { (target: TrackedWindow) in
+            // Skip if target is our own app (e.g., Settings window)
+            let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
+            if isOwnApp { return }
+
+            if let settingsWindow = NSApp.windows.first(where: {
+                $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window"
+            }), settingsWindow.alphaValue == 0 {
+                settingsWindow.orderBack(nil)
+                settingsWindow.alphaValue = 1
+            }
+        }
+
         tracker.onRefreshComplete = { [weak self] spaceId, windows in
             guard let self else { return }
 
