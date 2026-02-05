@@ -10,6 +10,13 @@ extension NSRunningApplication {
     var isTrackable: Bool {
         activationPolicy != .prohibited
     }
+
+    /// Whether this app should have an AX observer for real-time notifications.
+    /// Only regular (Dock) apps get observers to avoid CPU overhead from system
+    /// accessory apps (WindowManager, Dock, SystemUIServer) that flood notifications.
+    var isObservable: Bool {
+        activationPolicy == .regular
+    }
 }
 
 // MARK: - CGWindowInfo
