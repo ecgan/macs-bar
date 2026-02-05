@@ -2,7 +2,6 @@ import SwiftUI
 
 struct AboutView: View {
     private let githubURL = URL(string: "https://github.com/ecgan/macs-bar")!
-    private let websiteURL = URL(string: "https://example.com")! // Placeholder
 
     var body: some View {
         VStack(spacing: 16) {
@@ -26,19 +25,16 @@ struct AboutView: View {
                 .foregroundColor(.secondary)
 
             // Copyright
-            Text("© 2024 Your Name. All rights reserved.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Text(
+                "© \(Calendar.current.component(.year, from: Date())) Gan Eng Chin. All rights reserved."
+            )
+            .font(.caption)
+            .foregroundColor(.secondary)
 
             // Links
             HStack(spacing: 16) {
                 Button("GitHub") {
                     NSWorkspace.shared.open(githubURL)
-                }
-                .buttonStyle(.link)
-
-                Button("Website") {
-                    NSWorkspace.shared.open(websiteURL)
                 }
                 .buttonStyle(.link)
             }
@@ -50,6 +46,6 @@ struct AboutView: View {
     }
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
     }
 }
