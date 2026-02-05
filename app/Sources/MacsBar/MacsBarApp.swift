@@ -6,10 +6,8 @@ struct MacsBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        // Note: SwiftUI Settings scene doesn't work with LSUIElement apps (.accessory policy)
-        // Using custom SettingsWindowController instead
         Settings {
-            EmptyView()
+            SettingsView()
         }
     }
 }

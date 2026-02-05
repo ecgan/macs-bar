@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Manages the Settings window for LSUIElement apps where SwiftUI Settings scene doesn't work
+/// Manages the Settings window for LSUIElement apps where SwiftUI Settings scene doesn't work reliably
 class SettingsWindowController {
     static let shared = SettingsWindowController()
 
@@ -11,13 +11,11 @@ class SettingsWindowController {
 
     func showSettings() {
         if let existingWindow = window {
-            // Window already exists, just bring it to front
             existingWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
 
-        // Create new settings window
         let settingsView = SettingsView()
         let hostingController = NSHostingController(rootView: settingsView)
 
@@ -31,8 +29,6 @@ class SettingsWindowController {
         window.contentViewController = hostingController
         window.center()
         window.isReleasedWhenClosed = false
-
-        // Handle window close
         window.delegate = WindowDelegate.shared
 
         self.window = window

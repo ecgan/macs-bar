@@ -18,7 +18,7 @@ struct MacsBarContentView: View {
         .contentShape(Rectangle())
         .contextMenu {
             Button("Settings...") {
-                openSettings()
+                SettingsWindowController.shared.showSettings()
             }
             Divider()
             Button("Quit") {
@@ -91,8 +91,3 @@ struct AppIcon: View {
     }
 }
 
-// MARK: - Settings Helper
-
-private func openSettings() {
-    SettingsWindowController.shared.showSettings()
-}
