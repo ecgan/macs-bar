@@ -50,6 +50,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let barHeight: CGFloat = 36
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
+        // Without this, keyboard shortcuts become slow (~200ms delay) because NSApp.activate()
+        // in KeyboardShortcutHandler takes longer for non-accessory apps. Do not remove.
+        NSApp.setActivationPolicy(.accessory)
+        
         let tracker = WindowTracker()
         self.windowTracker = tracker
 
