@@ -135,14 +135,6 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
 
         let target = windows[newIndex]
 
-        // Gain activation authority by briefly activating our own app,
-        // then poll until macOS has processed the activation.
-        NSApp.activate(ignoringOtherApps: true)
-        for _ in 0..<20 {
-            if NSApp.isActive { break }
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-
         try? await tracker.activateWindow(target)
     }
 }

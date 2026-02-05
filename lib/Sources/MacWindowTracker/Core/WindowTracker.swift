@@ -132,6 +132,17 @@ public final class WindowTracker: ObservableObject {
 
     /// Activate (focus) a window by bringing it to front
     public func activateWindow(_ window: TrackedWindow) async throws {
+        // Gain activation authority by briefly activating our own app first.
+        // This prevents AX calls from blocking when querying backgrounded apps
+        // (especially accessory apps like Rectangle which become unresponsive to AX).
+        // Note: ignoringOtherApps:true is deprecated but required - the modern activate()
+        // doesn't force activation strongly enough, causing AX timeouts and UI hangs.
+        NSApp.activate(ignoringOtherApps: true)
+        for _ in 0..<20 {
+            if NSApp.isActive { break }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
         // Use AX to raise the specific window (this also activates the owning app)
         let axApp = AXUIElement.application(pid: window.appPid)
 
