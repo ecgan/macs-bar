@@ -6,9 +6,30 @@ struct MacsBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
+        MenuBarExtra("Macs Bar", systemImage: "menubar.rectangle") {
+            AppContextMenu()
+        }
+
         Settings {
             SettingsView()
         }
+    }
+}
+
+/// Shared menu content for menu bar and context menus
+struct AppContextMenu: View {
+    var body: some View {
+        SettingsLink {
+            Text("Settings...")
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        Divider()
+
+        Button("Quit Macs Bar") {
+            NSApplication.shared.terminate(nil)
+        }
+        .keyboardShortcut("q", modifiers: .command)
     }
 }
 
@@ -24,8 +45,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let barHeight: CGFloat = 36
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
-
         let tracker = WindowTracker()
         self.windowTracker = tracker
 

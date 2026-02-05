@@ -17,13 +17,7 @@ struct MacsBarContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .contextMenu {
-            Button("Settings...") {
-                SettingsWindowController.shared.showSettings()
-            }
-            Divider()
-            Button("Quit") {
-                NSApp.terminate(nil)
-            }
+            AppContextMenu()
         }
     }
 }
