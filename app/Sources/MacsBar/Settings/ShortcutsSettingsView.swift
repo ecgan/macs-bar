@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ShortcutsSettingsView: View {
-    @StateObject private var storage = ShortcutStorage()
+    @EnvironmentObject private var storage: ShortcutStorage
 
     var body: some View {
         Form {

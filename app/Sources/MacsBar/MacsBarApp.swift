@@ -12,6 +12,7 @@ struct MacsBarApp: App {
 
         Settings {
             SettingsView()
+                .environmentObject(appDelegate.shortcutStorage)
         }
     }
 }

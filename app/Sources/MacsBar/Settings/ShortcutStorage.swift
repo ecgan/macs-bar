@@ -58,7 +58,6 @@ class ShortcutStorage: ObservableObject {
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
-    private var defaultsObserver: NSObjectProtocol?
     private static let shortcutsKey = "keyboardShortcuts"
 
     @Published private(set) var shortcuts: [ShortcutAction: KeyboardShortcut] = [:]
@@ -66,23 +65,6 @@ class ShortcutStorage: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         loadShortcuts()
-
-        // Observe UserDefaults changes so all instances stay in sync
-        defaultsObserver = NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: defaults,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.loadShortcuts()
-            }
-        }
-    }
-
-    deinit {
-        if let observer = defaultsObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
     }
 
     func shortcut(for action: ShortcutAction) -> KeyboardShortcut {
