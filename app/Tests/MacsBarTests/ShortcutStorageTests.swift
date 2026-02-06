@@ -50,4 +50,25 @@ struct ShortcutStorageTests {
         let shortcut = storage.shortcut(for: .previousWindow)
         #expect(shortcut.keyCode == 123)
     }
+
+    @Test("setShortcut updates shortcuts dictionary immediately")
+    @MainActor
+    func setShortcutUpdatesImmediately() {
+        let defaults = UserDefaults(suiteName: "test-defaults-\(UUID())")!
+        let storage = ShortcutStorage(defaults: defaults)
+
+        // Verify shortcuts dictionary is empty initially (defaults not stored)
+        #expect(storage.shortcuts[.previousWindow] == nil)
+
+        // Set a custom shortcut
+        let customShortcut = KeyboardShortcut(keyCode: 0, modifiers: [.command, .shift])
+        storage.setShortcut(customShortcut, for: .previousWindow)
+
+        // Verify shortcuts dictionary is updated synchronously (no async delay)
+        // This is critical - the KeyboardShortcutHandler reads this dictionary on every keypress
+        let stored = storage.shortcuts[.previousWindow]
+        #expect(stored != nil, "shortcuts dictionary should be updated immediately")
+        #expect(stored?.keyCode == 0)
+        #expect(stored?.modifiers == [.command, .shift])
+    }
 }
