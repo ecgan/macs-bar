@@ -1,9 +1,17 @@
 import SwiftUI
 import ServiceManagement
+import Sparkle
 
 struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
-    @AppStorage("checkForUpdatesAutomatically") private var checkForUpdates = true
+    @EnvironmentObject private var updaterService: UpdaterService
+
+    private var automaticallyChecksForUpdates: Binding<Bool> {
+        Binding(
+            get: { updaterService.updater.automaticallyChecksForUpdates },
+            set: { updaterService.updater.automaticallyChecksForUpdates = $0 }
+        )
+    }
 
     var body: some View {
         Form {
@@ -19,7 +27,7 @@ struct GeneralSettingsView: View {
                 updateLaunchAtLogin(enabled: launchAtLogin)
             }
 
-            Toggle(isOn: $checkForUpdates) {
+            Toggle(isOn: automaticallyChecksForUpdates) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Check for updates automatically")
                     Text("Periodically check for new versions")
@@ -27,6 +35,11 @@ struct GeneralSettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+
+            Button("Check for Updates Now...") {
+                updaterService.checkForUpdates()
+            }
+            .disabled(!updaterService.canCheckForUpdates)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

@@ -8,11 +8,13 @@ struct MacsBarApp: App {
     var body: some Scene {
         MenuBarExtra("Macs Bar", systemImage: "menubar.rectangle") {
             AppContextMenu()
+                .environmentObject(appDelegate.updaterService)
         }
 
         Settings {
             SettingsView()
                 .environmentObject(appDelegate.shortcutStorage)
+                .environmentObject(appDelegate.updaterService)
         }
     }
 }
@@ -20,8 +22,14 @@ struct MacsBarApp: App {
 /// Shared menu content for menu bar and context menus
 struct AppContextMenu: View {
     @Environment(\.openSettings) private var openSettings
+    @EnvironmentObject private var updaterService: UpdaterService
 
     var body: some View {
+        Button("Check for Updates...") {
+            updaterService.checkForUpdates()
+        }
+        .disabled(!updaterService.canCheckForUpdates)
+
         // Note: We intentionally stay as .accessory and don't switch to .regular when
         // opening Settings. This is the common pattern for menu bar utility apps (e.g.,
         // Rectangle, Magnet). The tradeoff is no Cmd+Tab or Window menu, but it avoids
@@ -56,6 +64,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowTracker: WindowTracker?
     private let keyboardShortcutHandler = KeyboardShortcutHandler()
     let shortcutStorage = ShortcutStorage()
+    let updaterService = UpdaterService()
     private var activeSpaceId: Int = 0
 
     private let barHeight: CGFloat = 36
@@ -65,7 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Without this, keyboard shortcuts become slow (~200ms delay) because NSApp.activate()
         // in KeyboardShortcutHandler takes longer for non-accessory apps. Do not remove.
         NSApp.setActivationPolicy(.accessory)
-        
+
         let tracker = WindowTracker()
         self.windowTracker = tracker
 
@@ -194,6 +203,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         configurePanelStyle(panel, screen: screen)
 
         let contentView = MacsBarContentView(state: state)
+            .environmentObject(updaterService)
         panel.contentView = NSHostingView(rootView: contentView)
 
         // Deferred reveal: hide → order front → move to space → reveal next run loop turn
