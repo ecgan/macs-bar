@@ -6,9 +6,52 @@ struct MacsBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings {
-            EmptyView()
+        MenuBarExtra("Macs Bar", systemImage: "menubar.rectangle") {
+            AppContextMenu()
+                .environmentObject(appDelegate.updaterService)
         }
+
+        Settings {
+            SettingsView()
+                .environmentObject(appDelegate.shortcutStorage)
+                .environmentObject(appDelegate.updaterService)
+        }
+    }
+}
+
+/// Shared menu content for menu bar and context menus
+struct AppContextMenu: View {
+    @Environment(\.openSettings) private var openSettings
+    @EnvironmentObject private var updaterService: UpdaterService
+
+    var body: some View {
+        Button("Check for Updates...") {
+            updaterService.checkForUpdates()
+        }
+        .disabled(!updaterService.canCheckForUpdates)
+
+        // Note: We intentionally stay as .accessory and don't switch to .regular when
+        // opening Settings. This is the common pattern for menu bar utility apps (e.g.,
+        // Rectangle, Magnet). The tradeoff is no Cmd+Tab or Window menu, but it avoids
+        // complexity with activation policy switching and edge cases with window tracking.
+        Button("Settings...") {
+            openSettings()
+            // Bring settings window to front if already open (openSettings() alone won't do this)
+            DispatchQueue.main.async {
+                if let window = NSApp.settingsWindow {
+                    window.makeKeyAndOrderFront(nil)
+                    NSApp.activate()
+                }
+            }
+        }
+        .keyboardShortcut(",", modifiers: .command)
+
+        Divider()
+
+        Button("Quit Macs Bar") {
+            NSApplication.shared.terminate(nil)
+        }
+        .keyboardShortcut("q", modifiers: .command)
     }
 }
 
@@ -18,11 +61,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var spaceStates: [Int: SpaceBarState] = [:]
     var windowTracker: WindowTracker?
     private let keyboardShortcutHandler = KeyboardShortcutHandler()
+    let shortcutStorage = ShortcutStorage()
+    let updaterService = UpdaterService()
     private var activeSpaceId: Int = 0
 
     private let barHeight: CGFloat = 36
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
+        // Without this, keyboard shortcuts become slow (~200ms delay) because NSApp.activate()
+        // in KeyboardShortcutHandler takes longer for non-accessory apps. Do not remove.
         NSApp.setActivationPolicy(.accessory)
 
         let tracker = WindowTracker()
@@ -36,7 +84,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         keyboardShortcutHandler.tracker = tracker
+        keyboardShortcutHandler.shortcutStorage = shortcutStorage
         keyboardShortcutHandler.start()
+
+        // Hide Settings window during activation to prevent flash when NSApp.activate() is called
+        // (but only if we're not activating the Settings window itself)
+        //
+        // Known issues:
+        // - UI hang may occur when Rectangle app's settings window is open. Closing Rectangle's
+        //   settings window resolves this. This appears to be due to Rectangle (an accessory app)
+        //   becoming unresponsive to AX calls when its settings window is visible.
+        // - Our Settings window gets sent to the back when activating other windows. This is a
+        //   tradeoff to fix the z-order issue where Settings would incorrectly become the second
+        //   frontmost window. Users can bring Settings back to front by clicking on it.
+        tracker.willActivateWindow = { (target: TrackedWindow) in
+            // Skip if target is our own app (e.g., Settings window)
+            let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
+            if isOwnApp { return }
+
+            if let settingsWindow = NSApp.settingsWindow, settingsWindow.isVisible {
+                settingsWindow.alphaValue = 0
+            }
+        }
+
+        // Restore Settings window after activation, but order it to back to fix z-order
+        tracker.didActivateWindow = { (target: TrackedWindow) in
+            // Skip if target is our own app (e.g., Settings window)
+            let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
+            if isOwnApp { return }
+
+            if let settingsWindow = NSApp.settingsWindow, settingsWindow.alphaValue == 0 {
+                settingsWindow.orderBack(nil)
+                settingsWindow.alphaValue = 1
+            }
+        }
 
         tracker.onRefreshComplete = { [weak self] spaceId, windows in
             guard let self else { return }
@@ -116,6 +197,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         configurePanelStyle(panel, screen: screen)
 
         let contentView = MacsBarContentView(state: state)
+            .environmentObject(updaterService)
         panel.contentView = NSHostingView(rootView: contentView)
 
         // Deferred reveal: hide → order front → move to space → reveal next run loop turn
@@ -369,6 +451,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func screenDidChange() {
         activeSpaceId = MacWindowTracker.currentSpaceId()
         resetAllPanels()
+    }
+}
+
+// MARK: - Settings Window Lookup
+
+private extension NSApplication {
+    /// Undocumented SwiftUI identifier for the Settings window. May change across macOS versions.
+    static let settingsWindowId = "com_apple_SwiftUI_Settings_window"
+
+    /// Find the SwiftUI Settings window, if it exists.
+    var settingsWindow: NSWindow? {
+        windows.first { $0.identifier?.rawValue == Self.settingsWindowId }
     }
 }
 

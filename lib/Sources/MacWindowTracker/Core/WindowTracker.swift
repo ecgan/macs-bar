@@ -28,6 +28,14 @@ public final class WindowTracker: ObservableObject {
     /// Callback delivering (spaceId, windows) as an atomic snapshot after each refresh.
     public var onRefreshComplete: ((_ spaceId: Int, _ windows: [TrackedWindow]) -> Void)?
 
+    /// Called before window activation begins. Use to prepare UI (e.g., hide windows that
+    /// shouldn't flash during NSApp.activate). Receives the target window being activated.
+    public var willActivateWindow: ((_ target: TrackedWindow) -> Void)?
+
+    /// Called after window activation completes. Use to restore UI state.
+    /// Receives the target window that was activated.
+    public var didActivateWindow: ((_ target: TrackedWindow) -> Void)?
+
     // MARK: - Internal Components
 
     private let monitorManager: MonitorManager
@@ -132,6 +140,20 @@ public final class WindowTracker: ObservableObject {
 
     /// Activate (focus) a window by bringing it to front
     public func activateWindow(_ window: TrackedWindow) async throws {
+        // Allow app to prepare UI before activation (e.g., hide Settings window)
+        willActivateWindow?(window)
+
+        // Gain activation authority by briefly activating our own app first.
+        // This prevents AX calls from blocking when querying backgrounded apps
+        // (especially accessory apps like Rectangle which become unresponsive to AX).
+        // Note: ignoringOtherApps:true is deprecated but required - the modern activate()
+        // doesn't force activation strongly enough, causing AX timeouts and UI hangs.
+        NSApp.activate(ignoringOtherApps: true)
+        for _ in 0..<20 {
+            if NSApp.isActive { break }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
         // Use AX to raise the specific window (this also activates the owning app)
         let axApp = AXUIElement.application(pid: window.appPid)
 
@@ -139,6 +161,7 @@ public final class WindowTracker: ObservableObject {
         var windowsRef: AnyObject?
         guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else {
+            didActivateWindow?(window)
             return
         }
 
@@ -153,9 +176,13 @@ public final class WindowTracker: ObservableObject {
         // Activate the app *after* raising the specific window so macOS
         // gives it keyboard focus without reordering other windows.
         guard let app = NSRunningApplication(processIdentifier: window.appPid) else {
+            didActivateWindow?(window)
             throw WindowTrackerError.appNotFound
         }
-        app.activate(options: [.activateIgnoringOtherApps])
+        app.activate()
+
+        // Allow app to restore UI after activation
+        didActivateWindow?(window)
 
         // Refresh to update focus state
         refreshManager?.scheduleRefresh(.manual)
@@ -245,16 +272,13 @@ public final class WindowTracker: ObservableObject {
                 continue
             }
 
-            // Skip windows from non-regular apps.
-            // Only regular apps (those that appear in the Dock) have user-manageable windows.
-            // This filters out background utilities (e.g. "borders"), overlay apps, and
-            // unbundled processes that aren't proper macOS apps.
+            // Skip windows from non-trackable apps (daemons, XPC services, etc.)
             let app: NSRunningApplication? = appCache[cgWindow.ownerPid] ?? {
                 let resolved = NSRunningApplication(processIdentifier: cgWindow.ownerPid)
                 if let resolved { appCache[cgWindow.ownerPid] = resolved }
                 return resolved
             }()
-            guard let app, app.activationPolicy == .regular else {
+            guard let app, app.isTrackable else {
                 continue
             }
 

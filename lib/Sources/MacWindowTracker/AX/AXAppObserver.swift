@@ -130,11 +130,12 @@ final class AppObserverManager {
         self.onNotification = onNotification
     }
 
-    /// Start observing all running regular applications
+    /// Start observing all observable applications.
+    /// See `NSRunningApplication.isObservable` for the filtering criteria.
     func start() {
         // Observe existing apps
         for app in NSWorkspace.shared.runningApplications {
-            guard app.activationPolicy == .regular else { continue }
+            guard app.isObservable else { continue }
             addObserver(for: app)
         }
 
@@ -144,7 +145,7 @@ final class AppObserverManager {
         workspaceObservers.append(
             nc.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] notification in
                 guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                      app.activationPolicy == .regular else { return }
+                      app.isObservable else { return }
                 Task { @MainActor in self?.addObserver(for: app) }
             }
         )
@@ -170,16 +171,29 @@ final class AppObserverManager {
         workspaceObservers.removeAll()
     }
 
-    /// Get the focused window of the frontmost app
+    /// Get the focused window of the frontmost app.
+    /// Uses the app's observer if available, otherwise falls back to direct AX query.
+    /// This allows focus detection for accessory apps without dedicated observers.
     func getFocusedWindow() async throws -> (pid: pid_t, windowId: CGWindowID)? {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication,
-              let observer = observers[frontApp.processIdentifier] else {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
             return nil
         }
 
-        if let (windowId, _) = try await observer.getFocusedWindow() {
-            return (frontApp.processIdentifier, windowId)
+        let pid = frontApp.processIdentifier
+
+        // Try observer first (faster, uses dedicated thread)
+        if let observer = observers[pid] {
+            if let (windowId, _) = try await observer.getFocusedWindow() {
+                return (pid, windowId)
+            }
         }
+
+        // Fallback: direct AX query for apps without observers (e.g., accessory apps)
+        let axApp = AXUIElement.application(pid: pid)
+        if let (windowId, _) = axApp.focusedWindow() {
+            return (pid, windowId)
+        }
+
         return nil
     }
 

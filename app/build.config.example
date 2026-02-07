@@ -1,0 +1,7 @@
+# Build configuration for MacsBar
+# Copy this file to build.config and update the values.
+# This file is sourced by build-app.sh
+
+# Code signing identity. Use "security find-identity -v -p codesigning" to list available identities.
+# Use "-" for ad-hoc signing (default).
+CODESIGN_IDENTITY="-"

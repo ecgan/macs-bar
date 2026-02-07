@@ -26,5 +26,9 @@ xcuserdata/
 .vscode/
 .claude/
 
+# Build configuration (machine-specific)
+build.config
+
 # Build artifacts
 *.app/
+*.zip
