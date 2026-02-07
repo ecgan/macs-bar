@@ -1,4 +1,5 @@
 @preconcurrency import Cocoa
+import Combine
 import os
 import MacWindowTracker
 
@@ -11,9 +12,21 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
     private var runLoopSource: CFRunLoopSource?
     private var tapThread: Thread?
     private let _lock = OSAllocatedUnfairLock<(tapRef: CFMachPort?, tapRunLoop: CFRunLoop?)>(uncheckedState: (nil, nil))
+    private let _shortcutsCache = OSAllocatedUnfairLock<[ShortcutAction: KeyboardShortcut]>(uncheckedState: [:])
+    private var shortcutsCancellable: AnyCancellable?
     private var retainedSelf: Unmanaged<KeyboardShortcutHandler>?
 
     @MainActor func start() {
+        // Cache shortcuts for lock-protected access from the event tap thread.
+        // This avoids DispatchQueue.main.sync on every keypress.
+        if let storage = shortcutStorage {
+            let initial = storage.shortcuts
+            _shortcutsCache.withLock { $0 = initial }
+            shortcutsCancellable = storage.$shortcuts.sink { [weak self] newShortcuts in
+                self?._shortcutsCache.withLock { $0 = newShortcuts }
+            }
+        }
+
         let eventMask: CGEventMask = 1 << CGEventType.keyDown.rawValue
         let retained = Unmanaged.passRetained(self)
         retainedSelf = retained
@@ -56,6 +69,9 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
     }
 
     @MainActor func stop() {
+        shortcutsCancellable?.cancel()
+        shortcutsCancellable = nil
+
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
@@ -88,16 +104,12 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
         if flags.contains(.maskShift) { modifiers.insert(.shift) }
         if flags.contains(.maskCommand) { modifiers.insert(.command) }
 
-        // Check against configured shortcuts
+        // Check against configured shortcuts (read from lock-protected cache, no main thread hop)
         var matchedAction: ShortcutAction?
-
-        // Read shortcuts on main actor
-        let shortcuts = DispatchQueue.main.sync { [weak self] () -> [ShortcutAction: KeyboardShortcut]? in
-            self?.shortcutStorage?.shortcuts
-        }
+        let shortcuts = _shortcutsCache.withLock { $0 }
 
         for action in ShortcutAction.allCases {
-            let shortcut = shortcuts?[action] ?? KeyboardShortcut(
+            let shortcut = shortcuts[action] ?? KeyboardShortcut(
                 keyCode: action.defaultKeyCode,
                 modifiers: action.defaultModifiers
             )
