@@ -38,9 +38,7 @@ struct AppContextMenu: View {
             openSettings()
             // Bring settings window to front if already open (openSettings() alone won't do this)
             DispatchQueue.main.async {
-                if let window = NSApp.windows.first(where: {
-                    $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window"
-                }) {
+                if let window = NSApp.settingsWindow {
                     window.makeKeyAndOrderFront(nil)
                     NSApp.activate()
                 }
@@ -104,9 +102,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
             if isOwnApp { return }
 
-            if let settingsWindow = NSApp.windows.first(where: {
-                $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window"
-            }), settingsWindow.isVisible {
+            if let settingsWindow = NSApp.settingsWindow, settingsWindow.isVisible {
                 settingsWindow.alphaValue = 0
             }
         }
@@ -117,9 +113,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
             if isOwnApp { return }
 
-            if let settingsWindow = NSApp.windows.first(where: {
-                $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window"
-            }), settingsWindow.alphaValue == 0 {
+            if let settingsWindow = NSApp.settingsWindow, settingsWindow.alphaValue == 0 {
                 settingsWindow.orderBack(nil)
                 settingsWindow.alphaValue = 1
             }
@@ -457,6 +451,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func screenDidChange() {
         activeSpaceId = MacWindowTracker.currentSpaceId()
         resetAllPanels()
+    }
+}
+
+// MARK: - Settings Window Lookup
+
+private extension NSApplication {
+    /// Undocumented SwiftUI identifier for the Settings window. May change across macOS versions.
+    static let settingsWindowId = "com_apple_SwiftUI_Settings_window"
+
+    /// Find the SwiftUI Settings window, if it exists.
+    var settingsWindow: NSWindow? {
+        windows.first { $0.identifier?.rawValue == Self.settingsWindowId }
     }
 }
 
