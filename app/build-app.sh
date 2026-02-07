@@ -2,6 +2,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/build.config"
+
 BUILD_DIR="$SCRIPT_DIR/.build/release"
 APP_DIR="$SCRIPT_DIR/MacsBar.app"
 
@@ -24,10 +26,7 @@ cp -R "$BUILD_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/"
 # Add @executable_path/../Frameworks to the executable's rpath so it can find Sparkle
 install_name_tool -add_rpath @executable_path/../Frameworks "$APP_DIR/Contents/MacOS/MacsBar"
 
-# Code sign the app bundle. Set CODESIGN_IDENTITY env var to use a specific identity,
-# otherwise falls back to ad-hoc signing (-).
-SIGN_ID="${CODESIGN_IDENTITY:--}"
-codesign --force --deep --options runtime --sign "$SIGN_ID" "$APP_DIR"
+codesign --force --deep --options runtime --sign "$CODESIGN_IDENTITY" "$APP_DIR"
 
 echo "Done! App bundle created at: $APP_DIR"
 echo ""
