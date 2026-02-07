@@ -2,6 +2,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [ ! -f "$SCRIPT_DIR/build.config" ]; then
+    echo "Error: build.config not found. Copy build.config.example to build.config and configure it." >&2
+    exit 1
+fi
 source "$SCRIPT_DIR/build.config"
 
 BUILD_DIR="$SCRIPT_DIR/.build/release"
