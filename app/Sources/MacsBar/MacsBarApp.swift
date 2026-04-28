@@ -6,9 +6,12 @@ struct MacsBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Macs Bar", systemImage: "menubar.rectangle") {
+        MenuBarExtra {
             AppContextMenu()
                 .environmentObject(appDelegate.updaterService)
+        } label: {
+            Image(nsImage: MenuBarIconImage.taskbarTemplate)
+                .accessibilityLabel("Macs Bar")
         }
 
         Settings {
