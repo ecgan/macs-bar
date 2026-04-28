@@ -9,25 +9,23 @@ enum MenuBarIconImage {
         NSColor.black.setStroke()
         NSColor.black.setFill()
 
-        let screenRect = NSRect(x: 1.25, y: 1.5, width: 15.5, height: 11.0)
-        let screenPath = NSBezierPath(roundedRect: screenRect, xRadius: 2, yRadius: 2)
-        screenPath.lineWidth = 1.5
+        let screenRect = NSRect(x: 1.6, y: 1.8, width: 14.8, height: 10.2)
+        let screenPath = NSBezierPath(roundedRect: screenRect, xRadius: 2.0, yRadius: 2.0)
+        screenPath.lineWidth = 1.0
         screenPath.stroke()
 
-        let taskbarRect = NSRect(x: 2.7, y: 2.8, width: 12.6, height: 3.6)
-        let taskbarPath = NSBezierPath(roundedRect: taskbarRect, xRadius: 1.1, yRadius: 1.1)
+        let taskbarRect = NSRect(x: 2.3, y: 2.5, width: 13.4, height: 4.7)
+        let taskbarPath = NSBezierPath(roundedRect: taskbarRect, xRadius: 1.4, yRadius: 1.4)
         taskbarPath.fill()
 
-        let slotRects = [
-            NSRect(x: 4.0, y: 3.65, width: 1.7, height: 1.7),
-            NSRect(x: 6.35, y: 3.65, width: 1.7, height: 1.7),
-            NSRect(x: 8.7, y: 3.65, width: 1.7, height: 1.7),
-        ]
+        let activeSlotRect = NSRect(x: 4.2, y: 3.9, width: 4.9, height: 2.15)
+        let inactiveSlotRect = NSRect(x: 10.15, y: 3.9, width: 2.2, height: 2.15)
 
         NSColor.white.setFill()
-        for rect in slotRects {
-            NSBezierPath(roundedRect: rect, xRadius: 0.45, yRadius: 0.45).fill()
-        }
+        NSBezierPath(roundedRect: activeSlotRect, xRadius: 0.75, yRadius: 0.75).fill()
+
+        NSColor.white.withAlphaComponent(0.5).setFill()
+        NSBezierPath(roundedRect: inactiveSlotRect, xRadius: 0.75, yRadius: 0.75).fill()
 
         image.unlockFocus()
         image.isTemplate = true
