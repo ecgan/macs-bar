@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgC" x1="176" y1="112" x2="864" y2="912" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DFF6F3"/>
+      <stop offset="1" stop-color="#7FC8C0"/>
+    </linearGradient>
+    <linearGradient id="glassC" x1="300" y1="230" x2="736" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E7FBF6"/>
+    </linearGradient>
+    <filter id="shadowC" x="168" y="156" width="688" height="724" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#1E716A" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <rect x="96" y="96" width="832" height="832" rx="184" fill="url(#bgC)"/>
+
+  <g opacity="0.2" stroke="#FFFFFF" stroke-width="12">
+    <path d="M228 700C316 586 428 528 564 526C664 524 748 554 816 616"/>
+    <path d="M224 454C292 364 386 306 506 290C632 274 742 312 836 406"/>
+    <path d="M320 220C280 386 284 576 340 804"/>
+    <path d="M516 184C484 362 486 584 550 830"/>
+    <path d="M704 226C676 390 686 582 742 790"/>
+  </g>
+
+  <g filter="url(#shadowC)">
+    <rect x="252" y="216" width="520" height="520" rx="94" fill="url(#glassC)"/>
+    <rect x="252" y="216" width="520" height="520" rx="94" stroke="#FFFFFF" stroke-width="22"/>
+    <rect x="320" y="312" width="384" height="196" rx="32" stroke="#127D73" stroke-width="18"/>
+    <rect x="320" y="532" width="384" height="92" rx="30" fill="#127D73"/>
+    <rect x="370" y="560" width="46" height="36" rx="12" fill="#EFFFFB"/>
+    <rect x="436" y="560" width="46" height="36" rx="12" fill="#EFFFFB"/>
+    <rect x="502" y="560" width="46" height="36" rx="12" fill="#EFFFFB"/>
+    <rect x="568" y="560" width="86" height="36" rx="12" fill="#EFFFFB" fill-opacity="0.3"/>
+  </g>
+</svg>
