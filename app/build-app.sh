@@ -15,7 +15,6 @@ ICON_FILE="$SCRIPT_DIR/Resources/AppIcon.icns"
 
 echo "Building MacsBar..."
 cd "$SCRIPT_DIR"
-swift generate-app-icon.swift
 swift build -c release
 
 echo "Creating app bundle..."
