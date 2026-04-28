@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgB" x1="160" y1="120" x2="880" y2="904" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3DB"/>
+      <stop offset="1" stop-color="#E5C28F"/>
+    </linearGradient>
+    <linearGradient id="panelB" x1="252" y1="216" x2="764" y2="730" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#F8E8CF"/>
+    </linearGradient>
+    <filter id="shadowB" x="144" y="164" width="736" height="704" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#8D5F1F" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect x="96" y="96" width="832" height="832" rx="184" fill="url(#bgB)"/>
+
+  <g opacity="0.18">
+    <circle cx="512" cy="512" r="256" stroke="#FFFFFF" stroke-width="16"/>
+    <circle cx="512" cy="512" r="160" stroke="#FFFFFF" stroke-width="12"/>
+    <path d="M256 512H768" stroke="#FFFFFF" stroke-width="14"/>
+    <path d="M512 256V768" stroke="#FFFFFF" stroke-width="14"/>
+  </g>
+
+  <g filter="url(#shadowB)">
+    <rect x="252" y="216" width="520" height="488" rx="86" fill="url(#panelB)"/>
+    <rect x="252" y="216" width="520" height="488" rx="86" stroke="#FFFFFF" stroke-width="20"/>
+    <rect x="316" y="296" width="392" height="248" rx="34" stroke="#B4813A" stroke-width="18"/>
+    <rect x="316" y="558" width="392" height="84" rx="28" fill="#B4813A"/>
+    <rect x="357" y="582" width="70" height="36" rx="12" fill="#FFF9F1"/>
+    <rect x="437" y="582" width="70" height="36" rx="12" fill="#FFF9F1"/>
+    <rect x="517" y="582" width="70" height="36" rx="12" fill="#FFF9F1" fill-opacity="0.5"/>
+    <rect x="597" y="582" width="70" height="36" rx="12" fill="#FFF9F1"/>
+  </g>
+</svg>

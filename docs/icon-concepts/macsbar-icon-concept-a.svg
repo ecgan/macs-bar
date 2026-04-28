@@ -1,0 +1,42 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgA" x1="160" y1="120" x2="864" y2="904" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFF5FA"/>
+      <stop offset="1" stop-color="#C7D5E4"/>
+    </linearGradient>
+    <linearGradient id="screenA" x1="280" y1="220" x2="744" y2="650" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#E8F0F7"/>
+    </linearGradient>
+    <linearGradient id="barA" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#25303C"/>
+      <stop offset="1" stop-color="#151C24"/>
+    </linearGradient>
+    <filter id="shadowA" x="120" y="132" width="784" height="760" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#6D7B8B" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <rect x="96" y="96" width="832" height="832" rx="184" fill="url(#bgA)"/>
+
+  <g opacity="0.28" stroke="#FFFFFF" stroke-width="10">
+    <path d="M192 332H832"/>
+    <path d="M192 452H832"/>
+    <path d="M192 572H832"/>
+    <path d="M192 692H832"/>
+    <path d="M332 192V832"/>
+    <path d="M452 192V832"/>
+    <path d="M572 192V832"/>
+    <path d="M692 192V832"/>
+  </g>
+
+  <g filter="url(#shadowA)">
+    <rect x="232" y="212" width="560" height="528" rx="76" fill="url(#screenA)"/>
+    <rect x="232" y="212" width="560" height="528" rx="76" stroke="#FFFFFF" stroke-width="22"/>
+    <rect x="286" y="530" width="452" height="114" rx="34" fill="url(#barA)"/>
+    <rect x="326" y="566" width="84" height="42" rx="14" fill="#F6FAFD"/>
+    <rect x="422" y="566" width="84" height="42" rx="14" fill="#F6FAFD"/>
+    <rect x="518" y="566" width="84" height="42" rx="14" fill="#FFFFFF" fill-opacity="0.28"/>
+    <rect x="614" y="566" width="84" height="42" rx="14" fill="#F6FAFD"/>
+  </g>
+</svg>

@@ -11,6 +11,7 @@ source "$SCRIPT_DIR/build.config"
 
 BUILD_DIR="$SCRIPT_DIR/.build/release"
 APP_DIR="$SCRIPT_DIR/MacsBar.app"
+ICON_FILE="$SCRIPT_DIR/Resources/AppIcon.icns"
 
 echo "Building MacsBar..."
 cd "$SCRIPT_DIR"
@@ -24,6 +25,9 @@ mkdir -p "$APP_DIR/Contents/Frameworks"
 
 cp "$BUILD_DIR/MacsBar" "$APP_DIR/Contents/MacOS/MacsBar"
 cp "$SCRIPT_DIR/Info.plist" "$APP_DIR/Contents/Info.plist"
+if [ -f "$ICON_FILE" ]; then
+    cp "$ICON_FILE" "$APP_DIR/Contents/Resources/"
+fi
 
 # Copy Sparkle.framework into the app bundle
 cp -R "$BUILD_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/"
