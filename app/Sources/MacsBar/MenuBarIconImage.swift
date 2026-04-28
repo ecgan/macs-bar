@@ -11,7 +11,7 @@ enum MenuBarIconImage {
 
         let screenRect = NSRect(x: 1.25, y: 1.5, width: 15.5, height: 11.0)
         let screenPath = NSBezierPath(roundedRect: screenRect, xRadius: 2, yRadius: 2)
-        screenPath.lineWidth = 1.5
+        screenPath.lineWidth = 1
         screenPath.stroke()
 
         let taskbarRect = NSRect(x: 2.7, y: 2.8, width: 12.6, height: 3.6)
