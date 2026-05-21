@@ -227,6 +227,43 @@ public final class WindowTracker: ObservableObject {
         }
     }
 
+    /// Move a window to the given position
+    public func moveWindow(_ window: TrackedWindow, to position: CGPoint) {
+        let axApp = AXUIElement.application(pid: window.appPid)
+
+        var windowsRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let axWindows = windowsRef as? [AXUIElement] else {
+            return
+        }
+
+        for axWindow in axWindows {
+            if axWindow.windowId() == window.id {
+                axWindow.setPosition(position)
+                break
+            }
+        }
+    }
+
+    /// Move and resize a window to the given frame
+    public func setWindowFrame(_ window: TrackedWindow, to frame: CGRect) {
+        let axApp = AXUIElement.application(pid: window.appPid)
+
+        var windowsRef: AnyObject?
+        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let axWindows = windowsRef as? [AXUIElement] else {
+            return
+        }
+
+        for axWindow in axWindows {
+            if axWindow.windowId() == window.id {
+                axWindow.setPosition(frame.origin)
+                axWindow.setSize(frame.size)
+                break
+            }
+        }
+    }
+
     // MARK: - Private
 
     private func handleAXNotification(_ notification: AXNotification) {
