@@ -145,9 +145,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             keyboardShortcutHandler.currentSpaceState = spaceStates[activeSpaceId]
 
-            // Adjust maximized windows using the active space's data
+            // Keep cascaded windows opened from a maximized source inside the Macs Bar safe frame
             let activeWindows = spaceStates[activeSpaceId]?.windows ?? windows
-            adjustMaximizedWindows(activeWindows, tracker: tracker)
+            adjustCascadedWindowsFromMaximizedSource(activeWindows, tracker: tracker)
 
             cleanupInvalidPanels()
         }
@@ -298,27 +298,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task { await windowTracker?.refresh() }
     }
 
-    // MARK: - Maximized Window Adjustment
+    // MARK: - Cascaded Window Adjustment
 
-    private func adjustMaximizedWindows(_ windows: [TrackedWindow], tracker: WindowTracker) {
-        guard let mainMonitor = tracker.monitors.first(where: { $0.isMain }) else { return }
-
-        let menuBarHeight = mainMonitor.visibleFrame.origin.y
-        let expectedMaxHeight = mainMonitor.frame.height - menuBarHeight
-        let macsBarTop = mainMonitor.frame.maxY - barHeight
-        let tolerance: CGFloat = 2
+    private func adjustCascadedWindowsFromMaximizedSource(_ windows: [TrackedWindow], tracker: WindowTracker) {
+        let monitorsById = Dictionary(uniqueKeysWithValues: tracker.monitors.map { ($0.id, $0) })
 
         for window in windows {
-            guard window.monitorId == mainMonitor.id else { continue }
+            guard let monitor = monitorsById[window.monitorId] else { continue }
+            guard let adjustedFrame = MaximizedWindowCascadeAdjuster.adjustedFrame(
+                for: window.frame,
+                monitorFrame: monitor.frame,
+                visibleFrame: monitor.visibleFrame,
+                barHeight: barHeight
+            ) else {
+                continue
+            }
 
-            let widthMatches = abs(window.frame.width - mainMonitor.frame.width) <= tolerance
-            let heightMatches = abs(window.frame.height - expectedMaxHeight) <= tolerance
-            guard widthMatches && heightMatches else { continue }
-
-            guard window.frame.maxY > macsBarTop else { continue }
-
-            let newHeight = expectedMaxHeight - barHeight
-            tracker.resizeWindow(window, to: CGSize(width: window.frame.width, height: newHeight))
+            tracker.setWindowFrame(window, to: adjustedFrame)
         }
     }
 

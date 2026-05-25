@@ -85,6 +85,14 @@ extension AXUIElement {
         return AXUIElementSetAttributeValue(self, kAXSizeAttribute as CFString, value) == .success
     }
 
+    /// Set the position of this window
+    @discardableResult
+    func setPosition(_ position: CGPoint) -> Bool {
+        var cfPosition = position
+        guard let value = AXValueCreate(.cgPoint, &cfPosition) else { return false }
+        return AXUIElementSetAttributeValue(self, kAXPositionAttribute as CFString, value) == .success
+    }
+
     /// Close this window
     @discardableResult
     func close() -> Bool {
