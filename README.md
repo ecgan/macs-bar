@@ -80,7 +80,7 @@ cd app && swift test
 
 ### Project Structure
 
-```
+```text
 macs-bar/
 ├── lib/                    # MacWindowTracker library
 │   └── Sources/MacWindowTracker/
