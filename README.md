@@ -40,7 +40,13 @@ swift run MacsBar
 
 ### Permissions
 
-On first launch, macOS will prompt for Accessibility permissions. Grant these in **System Settings → Privacy & Security → Accessibility**.
+On first launch, macOS would refuse to open it the first time and claim it's "damaged" (it isn't). This is because the app isn't signed by a full Apple developer account. To workaround this, run this command in Terminal:
+
+```bash
+xattr -cr /Applications/MacsBar.app
+```
+
+macOS will also prompt for Accessibility permissions. Grant these in **System Settings → Privacy & Security → Accessibility**.
 
 Accessibility access is required to:
 
@@ -48,6 +54,8 @@ Accessibility access is required to:
 - Receive notifications when windows open, close, move, or change focus
 - Activate windows when you click them in the taskbar
 - Listen for global keyboard shortcuts
+
+After granting the accessibility permissions, you may need to restart the app. The app will display a black task bar at the bottom of your screen, showing a list of your open windows in your desktop space.
 
 ## How It Works
 
