@@ -101,21 +101,13 @@ header .container {
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background-image: url('../../favicon-32x32.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   border-radius: 8px;
   position: relative;
   box-shadow: 0 0 15px var(--primary-glow);
-}
-
-.logo-icon::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  right: 6px;
-  bottom: 6px;
-  background: var(--bg-color);
-  border-radius: 4px;
 }
 
 .nav-links {
