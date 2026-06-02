@@ -4,6 +4,8 @@ A lightweight macOS window taskbar that tracks and switches between open windows
 
 Macs Bar displays a compact taskbar panel showing all windows in your current Space. Click to switch windows, use keyboard shortcuts to navigate, and never lose track of what's open.
 
+<img width="640" height="414" alt="Macs Bar screenshot" src="./docs/assets/macs-bar-screenshot.jpeg" />
+
 ## Features
 
 - **Real-time window tracking** across all macOS Spaces
