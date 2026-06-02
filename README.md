@@ -90,7 +90,8 @@ macs-bar/
 │       └── Monitor/        # Display management
 ├── app/                    # MacsBar application
 │   └── Sources/MacsBar/
-└── docs/                   # Design documents
+├── docs/                   # Public website powered by GitHub Pages
+└── plans/                  # Design documents and plans
 ```
 
 ## License
