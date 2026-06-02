@@ -32,3 +32,9 @@ build.config
 # Build artifacts
 *.app/
 *.zip
+
+# Jekyll
+_site/
+.jekyll-cache/
+.jekyll-metadata
+

@@ -1,0 +1,229 @@
+---
+layout: null
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ site.title | default: "Macs Bar" }} — Lightweight macOS Space-Aware Taskbar</title>
+  <meta name="description" content="{{ site.description | default: 'A lightweight macOS window taskbar that aggregates, displays, and switches between open windows in your current desktop Space with premium zero-flicker space transitions.' }}">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="{{ site.title | default: 'Macs Bar' }} — macOS Space-Aware Taskbar">
+  <meta property="og:description" content="{{ site.description | default: 'A lightweight macOS window taskbar that aggregates, displays, and switches between open windows in your current desktop Space with premium zero-flicker space transitions.' }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ site.url }}{{ site.baseurl }}/">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <a href="#" class="logo">
+        <div class="logo-icon"></div>
+        <span>Macs Bar</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#install">Getting Started</a></li>
+        <li><a href="https://github.com/{{ site.github_username }}/macs-bar" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+            <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg> GitHub
+        </a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">⚡ macOS space switcher</div>
+      <h1>Keep Track of Open Windows.<br>Across all Spaces.</h1>
+      <p>A lightweight macOS window taskbar that aggregates, displays, and switches between open windows in your current desktop Space with premium zero-flicker space transitions.</p>
+      
+      <div class="hero-cta">
+        <a href="https://github.com/{{ site.github_username }}/macs-bar" class="btn btn-primary">
+          View on GitHub
+        </a>
+        <a href="#install" class="btn btn-secondary">Get Started</a>
+      </div>
+
+      <!-- Simulated App UI Showcase -->
+      <div class="hero-mockup">
+        <div class="mockup-header">
+          <div class="mockup-dot red"></div>
+          <div class="mockup-dot yellow"></div>
+          <div class="mockup-dot green"></div>
+        </div>
+        <div class="mockup-body">
+          <div class="macs-bar-preview">
+            <div class="preview-item active">
+              <span class="preview-icon">🌐</span>
+              <span class="preview-label">Safari</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-icon">💻</span>
+              <span class="preview-label">Terminal</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-icon">📝</span>
+              <span class="preview-label">VS Code</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-icon">🎨</span>
+              <span class="preview-label">Figma</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Features Grid -->
+  <section class="features" id="features">
+    <div class="container">
+      
+      <div class="section-title">
+        <h2>Features Designed for Power Users</h2>
+        <p>A smart, elegant taskbar experience that complements macOS window management beautifully.</p>
+      </div>
+
+      <div class="features-grid">
+        
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">🚀</div>
+          <h3>Real-time Window Tracking</h3>
+          <p>Instantly tracks open, closed, moved, or focused windows using advanced macOS Accessibility APIs combined with highly efficient fallback polling.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">✨</div>
+          <h3>Per-Space Panels</h3>
+          <p>Assigns dedicated native panel wrappers (`NSPanel`) to individual desktop Spaces, guaranteeing flicker-free transitions as you swap workspaces.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">🖥️</div>
+          <h3>Multi-display Support</h3>
+          <p>Creates discrete taskbars on separate physical monitors when "Displays have separate Spaces" is active in your macOS system preferences.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">⚙️</div>
+          <h3>Smart Resizing</h3>
+          <p>Intelligently negotiates screen real estate to ensure maximized windows automatically scale to prevent overlaps with the Macs Bar panel.</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">⌨️</div>
+          <h3>Keyboard Shortcuts</h3>
+          <p>Navigate and activate windows using global, fully customizable hotkeys without ever having to reach for your mouse or trackpad.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">👁️</div>
+          <h3>Fullscreen-Aware</h3>
+          <p>Perfectly blends into the background by auto-hiding when you enter fullscreen mode on any of your active application windows.</p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Installation / Build Guide -->
+  <section class="guide" id="install">
+    <div class="container">
+      <div class="guide-content">
+        
+        <div class="guide-info">
+          <h2>Getting Started</h2>
+          <p>Building Macs Bar is incredibly simple. You can clone the repository, build the binary bundle using our helper scripts, and run the app locally in seconds.</p>
+          
+          <ul class="steps">
+            <li class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                <h4>System Requirements</h4>
+                <p>Compatible with macOS 13 (Ventura) or later.</p>
+              </div>
+            </li>
+            <li class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                <h4>Grant Permissions</h4>
+                <p>Provide Accessibility permissions in System Settings on first launch to allow window tracking.</p>
+              </div>
+            </li>
+            <li class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                <h4>Run & Switch</h4>
+                <p>Click your taskbar windows or use keyboard shortcuts to jump effortlessly between active tasks.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="code-box">
+          <div class="code-header">
+            <div class="code-title">Terminal — Quick Install</div>
+          </div>
+          <div class="code-body">
+            <span class="code-line"><span class="code-comment"># 1. Clone the repository</span></span>
+            <span class="code-line"><span class="code-prompt">$</span>git clone https://github.com/{{ site.github_username }}/macs-bar.git</span>
+            <span class="code-line"><span class="code-prompt">$</span>cd macs-bar/app</span>
+            <span class="code-line"></span>
+            <span class="code-line"><span class="code-comment"># 2. Build the app bundle</span></span>
+            <span class="code-line"><span class="code-prompt">$</span>./build-app.sh</span>
+            <span class="code-line"></span>
+            <span class="code-line"><span class="code-comment"># 3. Launch the app</span></span>
+            <span class="code-line"><span class="code-prompt">$</span>open MacsBar.app</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <a href="#" class="footer-logo">
+          <span>Macs Bar</span>
+        </a>
+        <div class="footer-links">
+          <a href="#features">Features</a>
+          <a href="#install">Installation</a>
+          <a href="https://github.com/{{ site.github_username }}/macs-bar">GitHub Repository</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Macs Bar. Released under GPL-3.0 License.</p>
+        <a href="appcast.xml" class="appcast-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;">
+            <path d="M4 11a9 9 0 0 1 9 9" />
+            <path d="M4 4a16 16 0 0 1 16 16" />
+            <circle cx="5" cy="19" r="1" />
+          </svg>
+          Appcast Feed
+        </a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
