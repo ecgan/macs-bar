@@ -35,6 +35,11 @@
   padding: 0;
 }
 
+*:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 4px;
+}
+
 html {
   scroll-behavior: smooth;
 }
