@@ -1,5 +1,4 @@
 title: Macs Bar
-email: contact@ecgan.xyz
 description: A lightweight macOS window taskbar that tracks and switches between open windows across desktop Spaces.
 baseurl: "" # Keep empty if deploying to a custom domain or organization page root
 url: "https://ecgan.github.io/macs-bar"
