@@ -6,12 +6,12 @@ layout: null
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ site.title }} — Lightweight macOS Space-Aware Taskbar</title>
-  <meta name="description" content="{{ site.description }}">
+  <title>{{ site.title | default: "Macs Bar" }} — Lightweight macOS Space-Aware Taskbar</title>
+  <meta name="description" content="{{ site.description | default: 'A lightweight macOS window taskbar that aggregates, displays, and switches between open windows in your current desktop Space with premium zero-flicker space transitions.' }}">
   
   <!-- Open Graph -->
-  <meta property="og:title" content="{{ site.title }} — macOS Space-Aware Taskbar">
-  <meta property="og:description" content="{{ site.description }}">
+  <meta property="og:title" content="{{ site.title | default: 'Macs Bar' }} — macOS Space-Aware Taskbar">
+  <meta property="og:description" content="{{ site.description | default: 'A lightweight macOS window taskbar that aggregates, displays, and switches between open windows in your current desktop Space with premium zero-flicker space transitions.' }}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ site.url }}{{ site.baseurl }}/">
   
