@@ -169,7 +169,6 @@ final class AppObserverManager {
     }
 
     /// Stop all observers
-    /// 
     func stop() {
         for observer in observers.values {
             observer.stop()

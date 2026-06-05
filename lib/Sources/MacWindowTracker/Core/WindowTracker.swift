@@ -20,7 +20,7 @@ public final class WindowTracker: ObservableObject {
     public private(set) var focusedWindowId: CGWindowID?
 
     /// Whether the currently focused window is in native fullscreen mode
-    public private(set) var isFocusedWindowFullscreen: Bool = false
+    @Published public private(set) var isFocusedWindowFullscreen: Bool = false
 
     /// All connected monitors
     @Published public private(set) var monitors: [TrackedMonitor] = []
@@ -46,7 +46,9 @@ public final class WindowTracker: ObservableObject {
     private var refreshManager: RefreshManager?
     private var monitorCancellable: AnyCancellable?
 
-    // Caches for window standard/non-standard classification to avoid redundant AX queries
+    // Caches for window standard/non-standard classification to avoid redundant AX queries.
+    // Safe to mutate without a lock: all reads and writes happen on @MainActor (via performRefresh).
+    // If performRefresh is ever restructured to hop off-actor, these must be protected (e.g. with a lock).
     private var standardWindowIdsCache: Set<CGWindowID> = []
     private var nonStandardWindowIdsCache: Set<CGWindowID> = []
 
