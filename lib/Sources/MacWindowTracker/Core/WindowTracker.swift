@@ -19,6 +19,9 @@ public final class WindowTracker: ObservableObject {
     /// The currently focused window ID (nil if no window is focused)
     public private(set) var focusedWindowId: CGWindowID?
 
+    /// Whether the currently focused window is in native fullscreen mode
+    @Published public private(set) var isFocusedWindowFullscreen: Bool = false
+
     /// All connected monitors
     @Published public private(set) var monitors: [TrackedMonitor] = []
 
@@ -42,6 +45,12 @@ public final class WindowTracker: ObservableObject {
     private var appObserverManager: AppObserverManager?
     private var refreshManager: RefreshManager?
     private var monitorCancellable: AnyCancellable?
+
+    // Caches for window standard/non-standard classification to avoid redundant AX queries.
+    // Safe to mutate without a lock: all reads and writes happen on @MainActor (via performRefresh).
+    // If performRefresh is ever restructured to hop off-actor, these must be protected (e.g. with a lock).
+    private var standardWindowIdsCache: Set<CGWindowID> = []
+    private var nonStandardWindowIdsCache: Set<CGWindowID> = []
 
     // MARK: - Configuration
 
@@ -111,6 +120,9 @@ public final class WindowTracker: ObservableObject {
         windows = []
         focusedWindowId = nil
         currentSpaceId = 0
+        isFocusedWindowFullscreen = false
+        standardWindowIdsCache = []
+        nonStandardWindowIdsCache = []
     }
 
     /// Manually trigger a refresh
@@ -278,16 +290,21 @@ public final class WindowTracker: ObservableObject {
         let cgWindows = CGWindowList.onScreenWindows()
 
         // Get focused window via AX
-        let focusedInfo = try? await appObserverManager?.getFocusedWindow()
+        let focusedInfo = try? await appObserverManager?.getFocusedWindowInfo()
         let newFocusedId = focusedInfo?.windowId
+        self.isFocusedWindowFullscreen = focusedInfo?.isFullscreen ?? false
 
         // Build AX title lookup for windows missing CGWindowName
         // (kCGWindowName requires Screen Recording permission; AX titles work with just Accessibility)
         let axTitles = Self.axTitleLookup(for: cgWindows)
 
-        // Build AX subrole lookup to filter out popup/dropdown windows
-        // (e.g. Chrome's omnibox dropdown creates a separate window that isn't a standard window)
-        let standardWindowIds = Self.axStandardWindowIds(for: cgWindows)
+        // Clean up cache for windows that are no longer on screen
+        let activeWindowIds = Set(cgWindows.map { $0.windowId })
+        standardWindowIdsCache.formIntersection(activeWindowIds)
+        nonStandardWindowIdsCache.formIntersection(activeWindowIds)
+
+        // Build AX subrole lookup to filter out popup/dropdown windows using cache
+        let standardWindowIds = self.standardWindowIds(for: cgWindows, activeWindowIds: activeWindowIds)
 
         // Build tracked windows list
         var newWindows: [TrackedWindow] = []
@@ -348,28 +365,40 @@ public final class WindowTracker: ObservableObject {
     /// Build a set of window IDs that are standard windows (AXStandardWindow subrole).
     /// Popup/dropdown windows (e.g. Chrome's omnibox dropdown) have different subroles
     /// and should not appear in a taskbar-style UI.
-    private static func axStandardWindowIds(for cgWindows: [CGWindowInfo]) -> Set<CGWindowID> {
-        let pids = Set(cgWindows.map { $0.ownerPid })
-        var result: Set<CGWindowID> = []
+    /// Uses cache to avoid redundant AX API queries for already classified windows.
+    private func standardWindowIds(for cgWindows: [CGWindowInfo], activeWindowIds: Set<CGWindowID>) -> Set<CGWindowID> {
+        // Find window IDs we don't know about yet
+        let unknownWindows = cgWindows.filter {
+            !standardWindowIdsCache.contains($0.windowId) && !nonStandardWindowIdsCache.contains($0.windowId)
+        }
 
-        for pid in pids {
-            let axApp = AXUIElement.application(pid: pid)
-            var windowsRef: AnyObject?
-            guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
-                  let axWindows = windowsRef as? [AXUIElement] else {
-                continue
-            }
+        if !unknownWindows.isEmpty {
+            // Group by ownerPid so we only query AX kAXWindowsAttribute once per app
+            let pids = Set(unknownWindows.map { $0.ownerPid })
+            for pid in pids {
+                let axApp = AXUIElement.application(pid: pid)
+                var windowsRef: AnyObject?
+                guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+                      let axWindows = windowsRef as? [AXUIElement] else {
+                    continue
+                }
 
-            for axWindow in axWindows {
-                guard let windowId = axWindow.windowId() else { continue }
-                let subrole = axWindow.subrole
-                if subrole == "AXStandardWindow" {
-                    result.insert(windowId)
+                for axWindow in axWindows {
+                    guard let windowId = axWindow.windowId() else { continue }
+                    // Only process and cache if it's currently on screen (in activeWindowIds)
+                    if activeWindowIds.contains(windowId) {
+                        let subrole = axWindow.subrole
+                        if subrole == "AXStandardWindow" {
+                            standardWindowIdsCache.insert(windowId)
+                        } else {
+                            nonStandardWindowIdsCache.insert(windowId)
+                        }
+                    }
                 }
             }
         }
 
-        return result
+        return standardWindowIdsCache
     }
 
     /// Build a windowId → title lookup using the Accessibility API.

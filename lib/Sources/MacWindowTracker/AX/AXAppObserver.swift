@@ -68,6 +68,10 @@ final class AXAppObserver: @unchecked Sendable {
             handlers: handlers
         )
 
+        guard !subscriptions.isEmpty else {
+            return
+        }
+
         // Store self reference for the callback
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         for subscription in subscriptions {
@@ -78,9 +82,12 @@ final class AXAppObserver: @unchecked Sendable {
             }
         }
 
-        // Run the run loop until cancelled
+        // Run the run loop until cancelled or finished/stopped
         while !Thread.current.isCancelled {
-            CFRunLoopRunInMode(.defaultMode, 1.0, true)
+            let result = CFRunLoopRunInMode(.defaultMode, 1.0, true)
+            if result == .finished || result == .stopped {
+                break
+            }
         }
 
         // Clean up subscriptions
@@ -108,12 +115,14 @@ final class AXAppObserver: @unchecked Sendable {
         }
     }
 
-    /// Get the focused window for this app
-    func getFocusedWindow() async throws -> (windowId: CGWindowID, element: AXUIElement)? {
+    /// Get the focused window and its fullscreen status for this app
+    func getFocusedWindowInfo() async throws -> (windowId: CGWindowID, isFullscreen: Bool)? {
         guard let thread else { return nil }
 
         return try await thread.runInLoop { _ in
-            self.axApp.focusedWindow()
+            guard let (windowId, element) = self.axApp.focusedWindow() else { return nil }
+            let isFullscreen = element.boolAttribute("AXFullScreen") ?? false
+            return (windowId, isFullscreen)
         }
     }
 }
@@ -172,10 +181,10 @@ final class AppObserverManager {
         workspaceObservers.removeAll()
     }
 
-    /// Get the focused window of the frontmost app.
+    /// Get the focused window and its fullscreen status of the frontmost app.
     /// Uses the app's observer if available, otherwise falls back to direct AX query.
     /// This allows focus detection for accessory apps without dedicated observers.
-    func getFocusedWindow() async throws -> (pid: pid_t, windowId: CGWindowID)? {
+    func getFocusedWindowInfo() async throws -> (pid: pid_t, windowId: CGWindowID, isFullscreen: Bool)? {
         guard let frontApp = NSWorkspace.shared.frontmostApplication else {
             return nil
         }
@@ -184,15 +193,16 @@ final class AppObserverManager {
 
         // Try observer first (faster, uses dedicated thread)
         if let observer = observers[pid] {
-            if let (windowId, _) = try await observer.getFocusedWindow() {
-                return (pid, windowId)
+            if let info = try await observer.getFocusedWindowInfo() {
+                return (pid, info.windowId, info.isFullscreen)
             }
         }
 
         // Fallback: direct AX query for apps without observers (e.g., accessory apps)
         let axApp = AXUIElement.application(pid: pid)
-        if let (windowId, _) = axApp.focusedWindow() {
-            return (pid, windowId)
+        if let (windowId, element) = axApp.focusedWindow() {
+            let isFullscreen = element.boolAttribute("AXFullScreen") ?? false
+            return (pid, windowId, isFullscreen)
         }
 
         return nil

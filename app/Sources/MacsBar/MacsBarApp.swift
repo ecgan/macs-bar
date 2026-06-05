@@ -216,7 +216,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             // Don't reveal if fullscreen is detected by other methods
-            if self.shouldHidePanelForFullscreen(windows: self.spaceStates[spaceId]?.windows ?? [], screen: screen) {
+            if self.shouldHidePanelForFullscreen(spaceId: spaceId, windows: self.spaceStates[spaceId]?.windows ?? [], screen: screen) {
                 return
             }
             panel.alphaValue = 1
@@ -251,7 +251,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Handles fullscreen detection and panel visibility.
     private func updatePanelForSpace(_ spaceId: Int, windows: [TrackedWindow], screen: NSScreen) {
         // Check fullscreen BEFORE updating windows to prevent flicker
-        let shouldHideForFullscreen = shouldHidePanelForFullscreen(windows: windows, screen: screen)
+        let shouldHideForFullscreen = shouldHidePanelForFullscreen(spaceId: spaceId, windows: windows, screen: screen)
         if shouldHideForFullscreen {
             panels[spaceId]?.alphaValue = 0
         }
@@ -322,20 +322,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Quick check if we should hide the panel for fullscreen.
     /// Called BEFORE updating windows to prevent flicker during fullscreen transitions.
-    private func shouldHidePanelForFullscreen(windows: [TrackedWindow], screen: NSScreen) -> Bool {
-        // Method 1: Check if the active space is a native fullscreen space (Chrome, Finder, etc.)
-        if MacWindowTracker.isFullScreenSpace(activeSpaceId) {
+    private func shouldHidePanelForFullscreen(spaceId: Int, windows: [TrackedWindow], screen: NSScreen) -> Bool {
+        // Method 1: Check if the space is a native fullscreen space
+        if MacWindowTracker.isFullScreenSpace(spaceId) {
             return true
         }
 
-        // Method 2: Check frontmost app's window via Accessibility API
-        if isFrontmostAppFullscreen(screen: screen) {
+        // Method 2: Check if the focused window is fullscreen (using the async-loaded value from tracker)
+        if let tracker = windowTracker, tracker.isFocusedWindowFullscreen {
             return true
         }
 
-        // Method 3: Check frontmost app's windows for app-controlled fullscreen (e.g., VLC)
-        // Only check windows belonging to the frontmost app, not all windows on screen.
-        // This prevents false positives from maximized background windows.
+        // Method 3: Check if any window belonging to the frontmost app is fullscreen on this screen
         if let frontApp = NSWorkspace.shared.frontmostApplication {
             let frontAppWindows = windows.filter { $0.appPid == frontApp.processIdentifier }
             if frontAppWindows.contains(where: { isAppControlledFullscreen(window: $0, screen: screen) }) {
@@ -347,73 +345,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Hide panel when fullscreen is detected.
-    /// Uses multiple detection methods since some apps (VLC) don't expose their fullscreen windows.
     private func updatePanelVisibility(for spaceId: Int, windows: [TrackedWindow], screen: NSScreen) {
         guard let panel = panels[spaceId] else { return }
 
-        // Method 1: Check frontmost app's window via Accessibility API
-        let axFullscreen = isFrontmostAppFullscreen(screen: screen)
-
-        // Method 2: Check frontmost app's windows for app-controlled fullscreen
-        // Only check windows belonging to the frontmost app, not all windows on screen.
-        var hasFullscreenWindow = false
-        if let frontApp = NSWorkspace.shared.frontmostApplication {
-            let frontAppWindows = windows.filter { $0.appPid == frontApp.processIdentifier }
-            hasFullscreenWindow = frontAppWindows.contains { isAppControlledFullscreen(window: $0, screen: screen) }
-        }
-
-        let shouldHide = axFullscreen || hasFullscreenWindow
+        let shouldHide = shouldHidePanelForFullscreen(spaceId: spaceId, windows: windows, screen: screen)
         panel.alphaValue = shouldHide ? 0 : 1
-    }
-
-    /// Check if frontmost application's focused window is fullscreen using Accessibility API
-    private func isFrontmostAppFullscreen(screen: NSScreen) -> Bool {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
-            return false
-        }
-
-        let appElement = AXUIElementCreateApplication(frontApp.processIdentifier)
-
-        // Get the focused window
-        var focusedWindow: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindow)
-        guard result == .success, let windowElement = focusedWindow else { return false }
-
-        // Verify this is actually a window, not the desktop or other UI element
-        // When clicking the desktop, Finder reports the desktop as "focused window" but it's not a real window
-        let axWindow = windowElement as! AXUIElement
-        var roleRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(axWindow, kAXRoleAttribute as CFString, &roleRef) == .success,
-           let role = roleRef as? String, role != "AXWindow" {
-            return false
-        }
-
-        // Check if window is fullscreen via AXFullScreen attribute
-        var isFullscreen: CFTypeRef?
-        let fsResult = AXUIElementCopyAttributeValue(windowElement as! AXUIElement, "AXFullScreen" as CFString, &isFullscreen)
-        if fsResult == .success, let fs = isFullscreen as? Bool, fs {
-            return true
-        }
-
-        // Fallback: Check window size against screen
-        var position: CFTypeRef?
-        var size: CFTypeRef?
-        AXUIElementCopyAttributeValue(windowElement as! AXUIElement, kAXPositionAttribute as CFString, &position)
-        AXUIElementCopyAttributeValue(windowElement as! AXUIElement, kAXSizeAttribute as CFString, &size)
-
-        if let pos = position, let sz = size {
-            var point = CGPoint.zero
-            var winSize = CGSize.zero
-            AXValueGetValue(pos as! AXValue, .cgPoint, &point)
-            AXValueGetValue(sz as! AXValue, .cgSize, &winSize)
-
-            let tolerance: CGFloat = 5
-            return abs(winSize.width - screen.frame.width) <= tolerance
-                && abs(winSize.height - screen.frame.height) <= tolerance
-                && point.y <= tolerance
-        }
-
-        return false
     }
 
     /// Check if a window is fullscreen (either native macOS fullscreen or app-controlled).

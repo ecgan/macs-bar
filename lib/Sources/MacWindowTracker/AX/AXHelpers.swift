@@ -8,18 +8,26 @@ extension AXUIElement {
         AXUIElementCreateApplication(pid)
     }
 
-    /// Get the focused window of this application element
+    /// Get the focused window of this application element.
+    /// Returns nil if no window is focused or if the focused element is not a real
+    /// window (e.g. the Finder desktop, which reports itself as the focused element
+    /// when the user clicks the desktop but has role `AXScrollArea`, not `AXWindow`).
     func focusedWindow() -> (windowId: CGWindowID, element: AXUIElement)? {
         var value: AnyObject?
         let result = AXUIElementCopyAttributeValue(self, kAXFocusedWindowAttribute as CFString, &value)
-        guard result == .success, let windowElement = value else { return nil }
+        guard result == .success, let rawElement = value else { return nil }
+
+        let axElement = rawElement as! AXUIElement
+
+        // Guard against non-window elements (e.g. Finder desktop has role AXScrollArea)
+        guard axElement.role == kAXWindowRole else { return nil }
 
         // Get the window ID using private API
         var windowId: CGWindowID = 0
-        let idResult = _AXUIElementGetWindow(windowElement as! AXUIElement, &windowId)
+        let idResult = _AXUIElementGetWindow(axElement, &windowId)
         guard idResult == .success else { return nil }
 
-        return (windowId, windowElement as! AXUIElement)
+        return (windowId, axElement)
     }
 
     /// Get the window ID for this element (if it's a window)
