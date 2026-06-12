@@ -52,6 +52,8 @@ struct MacsBarItem: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .focusable(false)
         .contextMenu {
             Button("Close Window") {
                 state.closeWindow(window)
