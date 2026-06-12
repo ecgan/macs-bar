@@ -224,7 +224,9 @@ To install your newly compiled application locally for manual testing:
 
 ```bash
 # Copy the app to the Applications folder
-cp -r MacsBar.app /Applications/
+# NOTE: Use ditto (not cp -r) to correctly preserve symlinks inside
+# framework bundles like Sparkle.framework
+ditto app/MacsBar.app /Applications/MacsBar.app
 
 # Open and run the installed application
 open /Applications/MacsBar.app
