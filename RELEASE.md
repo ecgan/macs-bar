@@ -8,10 +8,11 @@ This document outlines the procedure for preparing, building, signing, and publi
 
 1. [Initial Setup (One-Time)](#initial-setup-one-time)
    - [1. Configure Code Signing](#1-configure-code-signing)
-   - [2. Generate Sparkle EdDSA Keys](#2-generate-sparkle-eddsa-keys)
-   - [3. Configure Update Feed URL](#3-configure-update-feed-url)
-   - [4. Enable GitHub Pages](#4-enable-github-pages)
-   - [5. Initialize the Appcast File](#5-initialize-the-appcast-file)
+   - [2. Run Initial Build](#2-run-initial-build)
+   - [3. Generate Sparkle EdDSA Keys](#3-generate-sparkle-eddsa-keys)
+   - [4. Configure Update Feed URL](#4-configure-update-feed-url)
+   - [5. Enable GitHub Pages](#5-enable-github-pages)
+   - [6. Initialize the Appcast File](#6-initialize-the-appcast-file)
 2. [Step-by-Step Release Process](#step-by-step-release-process)
    - [Step 1: Update Version Info](#step-1-update-version-info)
    - [Step 2: Build the App Bundle](#step-2-build-the-app-bundle)
@@ -57,14 +58,23 @@ To avoid exposing personal developer signing identities in public documentation 
    > security find-identity -v -p codesigning
    > ```
 
-### 2. Generate Sparkle EdDSA Keys
+### 2. Run Initial Build
+
+Run the build script once to fetch dependencies (via Swift Package Manager (SPM)) and compile the app. This makes Sparkle's command-line tools available in `app/.build/` for the key generation step below.
+
+```bash
+cd app
+./build-app.sh
+```
+
+### 3. Generate Sparkle EdDSA Keys
 
 Sparkle updates must be signed using an EdDSA (Ed25519) key pair.
 
-1. Generate the key pair using Sparkle's `generate_keys` tool (typically included in the Sparkle distribution):
+1. Generate the key pair using Sparkle's `generate_keys` tool:
 
    ```bash
-   ./path/to/sparkle/bin/generate_keys
+   app/.build/artifacts/sparkle/Sparkle/bin/generate_keys
    ```
 
 2. This tool outputs two keys:
@@ -79,7 +89,7 @@ Sparkle updates must be signed using an EdDSA (Ed25519) key pair.
    <string>YOUR_SPARKLE_PUBLIC_ED_KEY</string>
    ```
 
-### 3. Configure Update Feed URL
+### 4. Configure Update Feed URL
 
 Ensure the updates URL is configured in `app/Info.plist` so that the running application knows where to poll for updates:
 
@@ -88,7 +98,7 @@ Ensure the updates URL is configured in `app/Info.plist` so that the running app
 <string>https://ecgan.github.io/macs-bar/appcast.xml</string>
 ```
 
-### 4. Enable GitHub Pages
+### 5. Enable GitHub Pages
 
 GitHub Pages is used to host the update feed (`appcast.xml`).
 
@@ -98,7 +108,7 @@ GitHub Pages is used to host the update feed (`appcast.xml`).
 4. Set the branch to `main` and select the `/docs` folder as the source directory.
 5. Click **Save**.
 
-### 5. Initialize the Appcast File
+### 6. Initialize the Appcast File
 
 Ensure a basic structure is ready in `docs/appcast.xml`:
 
@@ -157,10 +167,8 @@ ditto -c -k --sequesterRsrc --keepParent MacsBar.app MacsBar.zip
 Sign the `.zip` archive using Sparkle's `sign_update` tool and your private EdDSA key:
 
 ```bash
-/path/to/sparkle/bin/sign_update MacsBar.zip
+app/.build/artifacts/sparkle/Sparkle/bin/sign_update MacsBar.zip
 ```
-
-_(Adjust `/path/to/sparkle/bin/` to point to the location of Sparkle's tools on your machine)._
 
 This command prints a signature and length. **Copy these two values:**
 
