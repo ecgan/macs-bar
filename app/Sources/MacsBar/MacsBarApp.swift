@@ -355,8 +355,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.alphaValue = shouldHide ? 0 : 1
     }
 
-    /// Check if a window is fullscreen (either native macOS fullscreen or app-controlled).
-    /// Native fullscreen: window starts at menu bar (y ≈ 30) and extends to bottom
+    /// Check if a window is fullscreen (app-controlled fullscreen covering the entire screen including menu bar).
     /// App-controlled fullscreen: window covers entire screen including menu bar (y = 0)
     private func isAppControlledFullscreen(window: TrackedWindow, screen: NSScreen) -> Bool {
         let tolerance: CGFloat = 5
@@ -371,15 +370,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let windowBottom = window.frame.origin.y + window.frame.height
         let extendsToBottom = abs(windowBottom - screenFrame.height) <= tolerance
 
-        // Native fullscreen: starts at menu bar (~30px), covers rest of screen
         // App fullscreen: starts at 0, covers entire screen
-        let menuBarHeight: CGFloat = 30
-        let isNativeFullscreen = window.frame.origin.y <= menuBarHeight + tolerance
-            && window.frame.height >= screenFrame.height - menuBarHeight - tolerance
         let isAppFullscreen = window.frame.origin.y <= tolerance
             && abs(window.frame.height - screenFrame.height) <= tolerance
 
-        let isFullscreen = coversFullWidth && extendsToBottom && (isNativeFullscreen || isAppFullscreen)
+        let isFullscreen = coversFullWidth && extendsToBottom && isAppFullscreen
 
         return isFullscreen
     }
