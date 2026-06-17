@@ -146,8 +146,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             keyboardShortcutHandler.currentSpaceState = spaceStates[activeSpaceId]
 
             // Keep cascaded windows opened from a maximized source inside the Macs Bar safe frame
-            let activeWindows = spaceStates[activeSpaceId]?.windows ?? windows
-            adjustCascadedWindowsFromMaximizedSource(activeWindows, tracker: tracker)
+            // Disabled in Floating Pill UI (Phase 1)
+            // let activeWindows = spaceStates[activeSpaceId]?.windows ?? windows
+            // adjustCascadedWindowsFromMaximizedSource(activeWindows, tracker: tracker)
 
             cleanupInvalidPanels()
         }
@@ -201,7 +202,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let contentView = MacsBarContentView(state: state)
             .environmentObject(updaterService)
-        panel.contentView = NSHostingView(rootView: contentView)
+        let hostingView = MacsBarHostingView(rootView: AnyView(contentView))
+        hostingView.state = state
+        panel.contentView = hostingView
 
         // Deferred reveal: hide → order front → move to space → reveal next run loop turn
         // Check fullscreen again before revealing since space status may have changed
@@ -238,7 +241,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Use floating level (3) instead of statusBar (25) so fullscreen windows cover us
         panel.level = .floating
         panel.isOpaque = false
-        panel.backgroundColor = .black
+        panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.isMovable = false
         panel.isMovableByWindowBackground = false

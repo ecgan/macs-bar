@@ -1,6 +1,13 @@
 import SwiftUI
 import MacWindowTracker
 
+struct PillWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct MacsBarContentView: View {
     @ObservedObject var state: SpaceBarState
 
@@ -8,16 +15,37 @@ struct MacsBarContentView: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            ForEach(state.windows) { window in
-                MacsBarItem(window: window, state: state)
+            HStack(spacing: 0) {
+                ForEach(state.windows) { window in
+                    MacsBarItem(window: window, state: state)
+                }
+            }
+            .padding(.horizontal, 4)
+            .frame(minWidth: 32)
+            .frame(height: 32)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+            )
+            .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 2)
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(key: PillWidthPreferenceKey.self, value: geo.size.width)
+                }
+            )
+            .contextMenu {
+                AppContextMenu()
             }
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .contextMenu {
-            AppContextMenu()
+        .background(Color.clear)
+        .onPreferenceChange(PillWidthPreferenceKey.self) { width in
+            state.pillWidth = width
         }
     }
 }
