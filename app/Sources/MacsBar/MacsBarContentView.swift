@@ -1,5 +1,5 @@
-import SwiftUI
 import MacWindowTracker
+import SwiftUI
 
 struct PillWidthPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -23,11 +23,11 @@ struct MacsBarContentView: View {
             .padding(.horizontal, 4)
             .frame(minWidth: 32)
             .frame(height: 32)
-            .background(.ultraThinMaterial)
+            .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                    .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
             )
             .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 2)
             .background(
@@ -62,7 +62,7 @@ struct MacsBarItem: View {
 
                 Text(window.title ?? window.appName)
                     .font(.system(size: 12))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -71,9 +71,10 @@ struct MacsBarItem: View {
             .frame(maxWidth: 172, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(window.isFocused
-                        ? Color.white.opacity(0.2)
-                        : Color.white.opacity(0.05))
+                    .fill(
+                        window.isFocused
+                            ? Color.primary.opacity(0.2)
+                            : Color.primary.opacity(0.05))
             )
             .padding(4)
             .frame(maxHeight: .infinity)
@@ -101,7 +102,8 @@ struct AppIcon: View {
 
     var body: some View {
         if let bundleId,
-           let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+            let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+        {
             let icon = NSWorkspace.shared.icon(forFile: appUrl.path)
             Image(nsImage: icon)
                 .resizable()
@@ -114,4 +116,3 @@ struct AppIcon: View {
         }
     }
 }
-
