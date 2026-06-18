@@ -39,6 +39,8 @@ struct MacsBarContentView: View {
             .contextMenu {
                 AppContextMenu()
             }
+            .opacity(state.windows.isEmpty ? 0 : 1)
+            .animation(.easeInOut(duration: 0.2), value: state.windows.isEmpty)
 
             Spacer(minLength: 0)
         }
