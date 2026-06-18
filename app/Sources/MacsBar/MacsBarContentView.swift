@@ -11,6 +11,10 @@ struct PillWidthPreferenceKey: PreferenceKey {
 struct MacsBarContentView: View {
     @ObservedObject var state: SpaceBarState
 
+    private var pillShape: some Shape {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
@@ -24,9 +28,9 @@ struct MacsBarContentView: View {
             .frame(minWidth: 32)
             .frame(height: 32)
             .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(pillShape)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                pillShape
                     .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
             )
             .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 2)
