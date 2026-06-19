@@ -10,6 +10,7 @@ struct PillWidthPreferenceKey: PreferenceKey {
 
 struct MacsBarContentView: View {
     @ObservedObject var state: SpaceBarState
+    @Environment(\.colorScheme) var colorScheme
 
     private var pillShape: some Shape {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -59,6 +60,13 @@ struct MacsBarContentView: View {
 struct MacsBarItem: View {
     let window: TrackedWindow
     let state: SpaceBarState
+    @Environment(\.colorScheme) var colorScheme
+
+    private var activeItemBackground: Color {
+        // Light mode: white (bright against the frosted pill)
+        // Dark mode: medium gray (clearly lighter than the darkened pill)
+        colorScheme == .dark ? Color(white: 0.32) : Color(NSColor.windowBackgroundColor)
+    }
 
     var body: some View {
         Button(action: activateWindow) {
@@ -77,10 +85,7 @@ struct MacsBarItem: View {
             .frame(maxWidth: 172, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(
-                        window.isFocused
-                            ? Color.primary.opacity(0.2)
-                            : Color.primary.opacity(0.05))
+                    .fill(window.isFocused ? activeItemBackground : Color.clear)
             )
             .padding(4)
             .frame(maxHeight: .infinity)
