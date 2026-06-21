@@ -62,10 +62,15 @@ struct MacsBarItem: View {
     let state: SpaceBarState
     @Environment(\.colorScheme) var colorScheme
 
-    private var activeItemBackground: Color {
-        // Light mode: white (bright against the frosted pill)
-        // Dark mode: medium gray (clearly lighter than the darkened pill)
-        colorScheme == .dark ? Color(white: 0.32) : Color(NSColor.windowBackgroundColor)
+    @ViewBuilder
+    private var activeItemBackground: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(colorScheme == .dark ? Color.white.opacity(0.15) : Color.white)
+            .shadow(color: Color.black.opacity(0.12), radius: 1, x: 0, y: 1)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+            )
     }
 
     var body: some View {
@@ -84,8 +89,11 @@ struct MacsBarItem: View {
             .padding(.vertical, 4)
             .frame(maxWidth: 172, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(window.isFocused ? activeItemBackground : Color.clear)
+                Group {
+                    if window.isFocused {
+                        activeItemBackground
+                    }
+                }
             )
             .padding(4)
             .frame(maxHeight: .infinity)
