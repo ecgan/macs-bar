@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.macsbar.app</string>
+    <string>com.ecgan.macsbar</string>
     <key>CFBundleName</key>
     <string>Macs Bar</string>
     <key>CFBundleExecutable</key>
