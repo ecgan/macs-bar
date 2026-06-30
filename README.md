@@ -42,13 +42,7 @@ swift run MacsBar
 
 ### Permissions
 
-On first launch, macOS would refuse to open it the first time and claim it's "damaged" (it isn't). This is because the app isn't signed by a full Apple developer account. To workaround this, run this command in Terminal:
-
-```bash
-xattr -cr /Applications/MacsBar.app
-```
-
-macOS will also prompt for Accessibility permissions. Grant these in **System Settings → Privacy & Security → Accessibility**.
+macOS will prompt for Accessibility permissions. Grant these in **System Settings → Privacy & Security → Accessibility**.
 
 Accessibility access is required to:
 
