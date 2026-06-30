@@ -152,22 +152,25 @@ cd app
 ./build-app.sh
 ```
 
-_This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app using the `CODESIGN_IDENTITY` specified in your local `build.config`._
+_This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app with hardened runtime and a secure timestamp using the `CODESIGN_IDENTITY` specified in your local `build.config`._
 
-### Step 3: Create the Compressed Archive
+### Step 3: Notarize and Staple the App
 
-Compress the app bundle using macOS `ditto` instead of generic `zip`. This preserves Finder attributes, resource forks, and necessary code-signing metadata:
+Notarize the application using the Apple Notary Service so that users can run it without Gatekeeper warnings. This script will zip the app, submit it, wait for Apple's approval, staple the notarization ticket, and output the final `MacsBar.zip`:
 
 ```bash
-ditto -c -k --sequesterRsrc --keepParent MacsBar.app MacsBar.zip
+./notarize-app.sh
 ```
 
-### Step 4: Sign the Archive
+> [!IMPORTANT]
+> Notarization and stapling **must** occur before generating the Sparkle signature. Stapling modifies the `.app` bundle (it adds the ticket to it), which changes the file signature of the final `.zip` archive.
 
-Sign the `.zip` archive using Sparkle's `sign_update` tool and your private EdDSA key:
+### Step 4: Sign the Final Archive for Sparkle
+
+Sign the final `MacsBar.zip` archive using Sparkle's `sign_update` tool:
 
 ```bash
-app/.build/artifacts/sparkle/Sparkle/bin/sign_update MacsBar.zip
+./sign-update.sh
 ```
 
 This command prints a signature and length. **Copy these two values:**
