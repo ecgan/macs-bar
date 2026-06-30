@@ -35,7 +35,7 @@ cp -R "$BUILD_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/"
 # Add @executable_path/../Frameworks to the executable's rpath so it can find Sparkle
 install_name_tool -add_rpath @executable_path/../Frameworks "$APP_DIR/Contents/MacOS/MacsBar"
 
-codesign --force --deep --options runtime --sign "$CODESIGN_IDENTITY" "$APP_DIR"
+codesign --force --deep --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP_DIR"
 
 echo "Done! App bundle created at: $APP_DIR"
 echo ""
