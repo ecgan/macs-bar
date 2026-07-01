@@ -5,3 +5,10 @@
 # Code signing identity. Use "security find-identity -v -p codesigning" to list available identities.
 # Use "-" for ad-hoc signing (default).
 CODESIGN_IDENTITY="-"
+
+# Credentials for App Store Connect notarization.
+# RECOMMENDED (Secure): Use a macOS Keychain profile name.
+# To create a keychain profile, run:
+#   xcrun notarytool store-credentials "notary-macsbar" --apple-id "your-apple-id@email.com" --team-id "your-10-char-team-id"
+# And then set:
+NOTARY_KEYCHAIN_PROFILE="notary-macsbar"

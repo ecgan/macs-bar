@@ -8,16 +8,17 @@ This document outlines the procedure for preparing, building, signing, and publi
 
 1. [Initial Setup (One-Time)](#initial-setup-one-time)
    - [1. Configure Code Signing](#1-configure-code-signing)
-   - [2. Run Initial Build](#2-run-initial-build)
-   - [3. Generate Sparkle EdDSA Keys](#3-generate-sparkle-eddsa-keys)
-   - [4. Configure Update Feed URL](#4-configure-update-feed-url)
-   - [5. Enable GitHub Pages](#5-enable-github-pages)
-   - [6. Initialize the Appcast File](#6-initialize-the-appcast-file)
+   - [2. Configure Notarization Credentials](#2-configure-notarization-credentials)
+   - [3. Run Initial Build](#3-run-initial-build)
+   - [4. Generate Sparkle EdDSA Keys](#4-generate-sparkle-eddsa-keys)
+   - [5. Configure Update Feed URL](#5-configure-update-feed-url)
+   - [6. Enable GitHub Pages](#6-enable-github-pages)
+   - [7. Initialize the Appcast File](#7-initialize-the-appcast-file)
 2. [Step-by-Step Release Process](#step-by-step-release-process)
    - [Step 1: Update Version Info](#step-1-update-version-info)
    - [Step 2: Build the App Bundle](#step-2-build-the-app-bundle)
-   - [Step 3: Create the Compressed Archive](#step-3-create-the-compressed-archive)
-   - [Step 4: Sign the Archive](#step-4-sign-the-archive)
+   - [Step 3: Notarize and Staple the App](#step-3-notarize-and-staple-the-app)
+   - [Step 4: Sign the Final Archive for Sparkle](#step-4-sign-the-final-archive-for-sparkle)
    - [Step 5: Create a GitHub Release](#step-5-create-a-github-release)
    - [Step 6: Update the Appcast Update Feed](#step-6-update-the-appcast-update-feed)
    - [Step 7: Deploy the Update Feed](#step-7-deploy-the-update-feed)
@@ -58,7 +59,39 @@ To avoid exposing personal developer signing identities in public documentation 
    > security find-identity -v -p codesigning
    > ```
 
-### 2. Run Initial Build
+### 2. Configure Notarization Credentials
+
+To automate notarization without storing your Apple Account password in plaintext on your disk, you should save your credentials in the macOS Keychain.
+
+#### A. Generate an App-Specific Password
+
+1. Go to [account.apple.com](https://account.apple.com) and sign in.
+2. Under **Sign-In and Security**, click **App-Specific Passwords**.
+3. Select **Generate an app-specific password**, enter a label (e.g., `notarytool`), and click **Create**.
+4. Copy the generated 16-character password (formatted as `xxxx-xxxx-xxxx-xxxx`).
+
+#### B. Store Credentials in macOS Keychain
+
+Open your terminal and run the following command to store the credentials under a profile named `notary-macsbar`. Replace the email and team ID with your own (your Team ID is part of your Developer ID Application certificate name):
+
+```bash
+xcrun notarytool store-credentials "notary-macsbar" \
+  --apple-id "your-apple-id@email.com" \
+  --team-id "your-10-char-team-id"
+```
+
+When prompted, paste the **App-Specific Password** you generated in the previous step.
+
+#### C. Reference the Profile in `build.config`
+
+Open `app/build.config` and add the keychain profile name:
+
+```bash
+# RECOMMENDED (Secure): Use a macOS Keychain profile name.
+NOTARY_KEYCHAIN_PROFILE="notary-macsbar"
+```
+
+### 3. Run Initial Build
 
 Run the build script once to fetch dependencies (via Swift Package Manager (SPM)) and compile the app. This makes Sparkle's command-line tools available in `app/.build/` for the key generation step below.
 
@@ -67,7 +100,7 @@ cd app
 ./build-app.sh
 ```
 
-### 3. Generate Sparkle EdDSA Keys
+### 4. Generate Sparkle EdDSA Keys
 
 Sparkle updates must be signed using an EdDSA (Ed25519) key pair.
 
@@ -89,7 +122,7 @@ Sparkle updates must be signed using an EdDSA (Ed25519) key pair.
    <string>YOUR_SPARKLE_PUBLIC_ED_KEY</string>
    ```
 
-### 4. Configure Update Feed URL
+### 5. Configure Update Feed URL
 
 Ensure the updates URL is configured in `app/Info.plist` so that the running application knows where to poll for updates:
 
@@ -98,7 +131,7 @@ Ensure the updates URL is configured in `app/Info.plist` so that the running app
 <string>https://ecgan.github.io/macs-bar/appcast.xml</string>
 ```
 
-### 5. Enable GitHub Pages
+### 6. Enable GitHub Pages
 
 GitHub Pages is used to host the update feed (`appcast.xml`).
 
@@ -108,7 +141,7 @@ GitHub Pages is used to host the update feed (`appcast.xml`).
 4. Set the branch to `main` and select the `/docs` folder as the source directory.
 5. Click **Save**.
 
-### 6. Initialize the Appcast File
+### 7. Initialize the Appcast File
 
 Ensure a basic structure is ready in `docs/appcast.xml`:
 
@@ -152,22 +185,25 @@ cd app
 ./build-app.sh
 ```
 
-_This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app using the `CODESIGN_IDENTITY` specified in your local `build.config`._
+_This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app with hardened runtime and a secure timestamp using the `CODESIGN_IDENTITY` specified in your local `build.config`._
 
-### Step 3: Create the Compressed Archive
+### Step 3: Notarize and Staple the App
 
-Compress the app bundle using macOS `ditto` instead of generic `zip`. This preserves Finder attributes, resource forks, and necessary code-signing metadata:
+Notarize the application using the Apple Notary Service so that users can run it without Gatekeeper warnings. This script will zip the app, submit it, wait for Apple's approval, staple the notarization ticket, and output the final `MacsBar.zip`:
 
 ```bash
-ditto -c -k --sequesterRsrc --keepParent MacsBar.app MacsBar.zip
+./notarize-app.sh
 ```
 
-### Step 4: Sign the Archive
+> [!IMPORTANT]
+> Notarization and stapling **must** occur before generating the Sparkle signature. Stapling modifies the `.app` bundle (it adds the ticket to it), which changes the file signature of the final `.zip` archive.
 
-Sign the `.zip` archive using Sparkle's `sign_update` tool and your private EdDSA key:
+### Step 4: Sign the Final Archive for Sparkle
+
+Sign the final `MacsBar.zip` archive using Sparkle's `sign_update` tool:
 
 ```bash
-app/.build/artifacts/sparkle/Sparkle/bin/sign_update MacsBar.zip
+./sign-update.sh
 ```
 
 This command prints a signature and length. **Copy these two values:**

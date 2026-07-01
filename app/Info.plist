@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.macsbar.app</string>
+    <string>com.ecgan.macsbar</string>
     <key>CFBundleName</key>
     <string>Macs Bar</string>
     <key>CFBundleExecutable</key>
@@ -13,17 +13,15 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
-    <string>0.0.3</string>
+    <string>0.0.4</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.0.3</string>
+    <string>0.0.4</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
-    <key>NSScreenCaptureUsageDescription</key>
-    <string>Macs Bar needs Screen Recording access to read window titles.</string>
     <key>SUFeedURL</key>
     <string>https://ecgan.github.io/macs-bar/appcast.xml</string>
     <key>SUPublicEDKey</key>
