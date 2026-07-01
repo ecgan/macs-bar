@@ -2,29 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleIdentifier</key>
-    <string>com.ecgan.macsbar</string>
-    <key>CFBundleName</key>
-    <string>Macs Bar</string>
-    <key>CFBundleExecutable</key>
-    <string>MacsBar</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleVersion</key>
-    <string>0.0.4</string>
-    <key>CFBundleShortVersionString</key>
-    <string>0.0.4</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>SUFeedURL</key>
-    <string>https://ecgan.github.io/macs-bar/appcast.xml</string>
-    <key>SUPublicEDKey</key>
-    <string>yrhOcDMSmdHDcJHS5kyBdoFjraahH+fmW9AHUqh/ZtI=</string>
+	<key>CFBundleExecutable</key>
+	<string>MacsBar</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.ecgan.macsbar</string>
+	<key>CFBundleName</key>
+	<string>Macs Bar</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.5</string>
+	<key>CFBundleVersion</key>
+	<string>0.0.5</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://ecgan.github.io/macs-bar/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>yrhOcDMSmdHDcJHS5kyBdoFjraahH+fmW9AHUqh/ZtI=</string>
 </dict>
 </plist>
