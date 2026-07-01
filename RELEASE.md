@@ -227,7 +227,7 @@ Upload the signed archive `MacsBar.zip` as a release asset under the new git tag
 Using the GitHub CLI (`gh`):
 
 ```bash
-gh release create 0.2.0 MacsBar.zip --title "0.2.0" --notes "Release notes here"
+gh release create 0.2.0 MacsBar.zip --title "0.2.0" --generate-notes
 ```
 
 ### Step 6: Update the Appcast Update Feed
