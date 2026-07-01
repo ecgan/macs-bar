@@ -170,8 +170,16 @@ Perform these steps for each new version you publish.
 
 Before compiling the app, update the version identifiers in `app/Info.plist` to match the target release.
 
-- **`CFBundleVersion`**: A unique, incrementing integer representing the build number (e.g. `2`).
-- **`CFBundleShortVersionString`**: The user-visible semantic version (e.g., `0.2.0`).
+You can use the helper script [app/bump-version.sh](/app/bump-version.sh) to automate this. Run it from the repository root:
+
+```bash
+./app/bump-version.sh [optional-version-number]
+```
+
+- If you don't provide a version number, it will prompt you with the next patch version as a default. Press **Enter** to accept it, or type your desired version.
+- If you provide a version number (e.g., `./app/bump-version.sh 0.2.0`), it will update the version immediately without prompting.
+
+This script updates both `CFBundleVersion` and `CFBundleShortVersionString` in `app/Info.plist`, stages and commits the change, and tags the commit with the new version number.
 
 > [!NOTE]
 > Sparkle compares `CFBundleVersion` (or `CFBundleShortVersionString` if configured) to determine if a newer version is available.
@@ -214,12 +222,12 @@ sparkle:edSignature="xxxxxx..." length="yyyyyy"
 
 ### Step 5: Create a GitHub Release
 
-Upload the signed archive `MacsBar.zip` as a release asset under a new tag corresponding to your version (e.g. `v0.2.0`).
+Upload the signed archive `MacsBar.zip` as a release asset under the new git tag created by the bump script (e.g. `0.2.0`).
 
 Using the GitHub CLI (`gh`):
 
 ```bash
-gh release create v0.2.0 MacsBar.zip --title "v0.2.0" --notes "Release notes here"
+gh release create 0.2.0 MacsBar.zip --title "0.2.0" --notes "Release notes here"
 ```
 
 ### Step 6: Update the Appcast Update Feed
@@ -234,7 +242,7 @@ Open `docs/appcast.xml` and add a new `<item>` entry inside the `<channel>` tag.
     <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
     <pubDate>Mon, 25 May 2026 22:15:53 +0800</pubDate>
     <enclosure
-        url="https://github.com/ecgan/macs-bar/releases/download/v0.2.0/MacsBar.zip"
+        url="https://github.com/ecgan/macs-bar/releases/download/0.2.0/MacsBar.zip"
         sparkle:edSignature="PASTE_SIGNATURE_HERE"
         length="PASTE_LENGTH_HERE"
         type="application/octet-stream" />
