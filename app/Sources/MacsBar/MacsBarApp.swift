@@ -169,6 +169,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     Task { @MainActor in
                         await self.setupAndStartTracker()
                     }
+                } else {
+                    self.tearDownTracker()
                 }
             }
 
@@ -192,7 +194,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try await tracker.start()
             isTrackerStarted = true
-            permissionManager.stopPolling()
 
             // Create initial panel for the current space (starts empty, fills on first refresh)
             let initialSpace = MacWindowTracker.currentSpaceId()
@@ -207,6 +208,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("Failed to start window tracker: \(error)")
         }
+    }
+
+    @MainActor
+    private func tearDownTracker() {
+        guard isTrackerStarted else { return }
+
+        windowTracker?.stop()
+        keyboardShortcutHandler.stop()
+
+        for panel in panels.values {
+            panel.orderOut(nil)
+        }
+        panels.removeAll()
+        spaceStates.removeAll()
+
+        isTrackerStarted = false
     }
 
     // MARK: - Panel Management

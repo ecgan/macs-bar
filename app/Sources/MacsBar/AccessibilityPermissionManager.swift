@@ -9,6 +9,7 @@ public final class AccessibilityPermissionManager: ObservableObject {
 
     public init() {
         checkStatus()
+        startPolling()
     }
 
     public func checkStatus() {
@@ -29,8 +30,6 @@ public final class AccessibilityPermissionManager: ObservableObject {
 
     public func startPolling() {
         guard pollTask == nil else { return }
-        checkStatus()
-        if isPermissionGranted { return }
 
         pollTask = Task { [weak self] in
             while true {
@@ -42,9 +41,10 @@ public final class AccessibilityPermissionManager: ObservableObject {
                 }
                 
                 let trusted = AXIsProcessTrusted()
-                if trusted {
-                    self?.isPermissionGranted = true
-                    break
+                if let self {
+                    if self.isPermissionGranted != trusted {
+                        self.isPermissionGranted = trusted
+                    }
                 }
             }
         }
