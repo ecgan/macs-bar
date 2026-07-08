@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import MacWindowTracker
 
 @main
@@ -9,6 +10,7 @@ struct MacsBarApp: App {
         MenuBarExtra {
             AppContextMenu()
                 .environmentObject(appDelegate.updaterService)
+                .environmentObject(appDelegate.permissionManager)
         } label: {
             Image(nsImage: MenuBarIconImage.taskbarTemplate)
                 .accessibilityLabel("Macs Bar")
@@ -26,35 +28,48 @@ struct MacsBarApp: App {
 struct AppContextMenu: View {
     @Environment(\.openSettings) private var openSettings
     @EnvironmentObject private var updaterService: UpdaterService
+    @EnvironmentObject private var permissionManager: AccessibilityPermissionManager
 
     var body: some View {
-        Button("Check for Updates...") {
-            updaterService.checkForUpdates()
-        }
-        .disabled(!updaterService.canCheckForUpdates)
+        Group {
+            if !permissionManager.isPermissionGranted {
+                Button("Grant Accessibility Permission...") {
+                    permissionManager.openSystemSettings()
+                }
+                Divider()
+            }
 
-        // Note: We intentionally stay as .accessory and don't switch to .regular when
-        // opening Settings. This is the common pattern for menu bar utility apps (e.g.,
-        // Rectangle, Magnet). The tradeoff is no Cmd+Tab or Window menu, but it avoids
-        // complexity with activation policy switching and edge cases with window tracking.
-        Button("Settings...") {
-            openSettings()
-            // Bring settings window to front if already open (openSettings() alone won't do this)
-            DispatchQueue.main.async {
-                if let window = NSApp.settingsWindow {
-                    window.makeKeyAndOrderFront(nil)
-                    NSApp.activate()
+            Button("Check for Updates...") {
+                updaterService.checkForUpdates()
+            }
+            .disabled(!updaterService.canCheckForUpdates)
+
+            // Note: We intentionally stay as .accessory and don't switch to .regular when
+            // opening Settings. This is the common pattern for menu bar utility apps (e.g.,
+            // Rectangle, Magnet). The tradeoff is no Cmd+Tab or Window menu, but it avoids
+            // complexity with activation policy switching and edge cases with window tracking.
+            Button("Settings...") {
+                openSettings()
+                // Bring settings window to front if already open (openSettings() alone won't do this)
+                DispatchQueue.main.async {
+                    if let window = NSApp.settingsWindow {
+                        window.makeKeyAndOrderFront(nil)
+                        NSApp.activate()
+                    }
                 }
             }
-        }
-        .keyboardShortcut(",", modifiers: .command)
+            .keyboardShortcut(",", modifiers: .command)
 
-        Divider()
+            Divider()
 
-        Button("Quit Macs Bar") {
-            NSApplication.shared.terminate(nil)
+            Button("Quit Macs Bar") {
+                NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q", modifiers: .command)
         }
-        .keyboardShortcut("q", modifiers: .command)
+        .onAppear {
+            permissionManager.checkStatus()
+        }
     }
 }
 
@@ -66,6 +81,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let keyboardShortcutHandler = KeyboardShortcutHandler()
     let shortcutStorage = ShortcutStorage()
     let updaterService = UpdaterService()
+    let permissionManager = AccessibilityPermissionManager()
+    private var permissionCancellable: AnyCancellable?
+    private var isTrackerStarted = false
     private var activeSpaceId: Int = 0
 
     private let barHeight: CGFloat = 36
@@ -78,17 +96,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let tracker = WindowTracker()
         self.windowTracker = tracker
-
-        // Create initial panel for the current space (starts empty, fills on first refresh)
-        let initialSpace = MacWindowTracker.currentSpaceId()
-        activeSpaceId = initialSpace
-        if let screen = NSScreen.screens.first {
-            _ = ensurePanel(forSpace: initialSpace, initialWindows: [], screen: screen)
-        }
-
-        keyboardShortcutHandler.tracker = tracker
-        keyboardShortcutHandler.shortcutStorage = shortcutStorage
-        keyboardShortcutHandler.start()
 
         // Hide Settings window during activation to prevent flash when NSApp.activate() is called
         // (but only if we're not activating the Settings window itself)
@@ -138,7 +145,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 for screen in NSScreen.screens {
                     guard let uuid = MacWindowTracker.displayUUID(for: screen),
                           let currentSpaceId = displaySpaces[uuid]?.first else { continue }
-                    let screenWindows = windows.filter { $0.frame.intersects(screen.quartzFrame) }
+                       let screenWindows = windows.filter { $0.frame.intersects(screen.quartzFrame) }
                     updatePanelForSpace(currentSpaceId, windows: screenWindows, screen: screen)
                 }
             }
@@ -153,14 +160,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             cleanupInvalidPanels()
         }
 
-        Task {
-            do {
-                try await tracker.start()
-            } catch WindowTrackerError.accessibilityPermissionDenied {
-                print("Please grant Accessibility permission in System Preferences > Privacy & Security > Accessibility")
-            } catch {
-                print("Failed to start window tracker: \(error)")
+        // Observe permission changes
+        permissionCancellable = permissionManager.$isPermissionGranted
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isGranted in
+                guard let self else { return }
+                if isGranted {
+                    Task { @MainActor in
+                        await self.setupAndStartTracker()
+                    }
+                }
             }
+
+        if !permissionManager.isPermissionGranted {
+            permissionManager.requestPermission()
         }
 
         NotificationCenter.default.addObserver(
@@ -169,6 +182,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
+    }
+
+    @MainActor
+    private func setupAndStartTracker() async {
+        guard !isTrackerStarted else { return }
+        guard let tracker = self.windowTracker else { return }
+
+        do {
+            try await tracker.start()
+            isTrackerStarted = true
+            permissionManager.stopPolling()
+
+            // Create initial panel for the current space (starts empty, fills on first refresh)
+            let initialSpace = MacWindowTracker.currentSpaceId()
+            activeSpaceId = initialSpace
+            if let screen = NSScreen.screens.first {
+                _ = ensurePanel(forSpace: initialSpace, initialWindows: [], screen: screen)
+            }
+
+            keyboardShortcutHandler.tracker = tracker
+            keyboardShortcutHandler.shortcutStorage = shortcutStorage
+            keyboardShortcutHandler.start()
+        } catch {
+            print("Failed to start window tracker: \(error)")
+        }
     }
 
     // MARK: - Panel Management
@@ -202,6 +240,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let contentView = MacsBarContentView(state: state)
             .environmentObject(updaterService)
+            .environmentObject(permissionManager)
         let hostingView = MacsBarHostingView(rootView: AnyView(contentView))
         hostingView.state = state
         panel.contentView = hostingView
