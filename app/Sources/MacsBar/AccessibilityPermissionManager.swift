@@ -37,6 +37,12 @@ public final class AccessibilityPermissionManager: ObservableObject {
     public func startPolling() {
         guard pollTask == nil else { return }
 
+        // `Task { }` created inside a `@MainActor`-isolated function inherits @MainActor
+        // isolation. This means the task body resumes on the main actor after each `await`,
+        // so reads and writes to `isPermissionGranted` are always main-actor-safe.
+        //
+        // `[weak self]` breaks the retain cycle: self → pollTask → self. Without it,
+        // `deinit` would never be called and the poll task would leak for the app's lifetime.
         pollTask = Task { [weak self] in
             while true {
                 if Task.isCancelled { break }
@@ -45,7 +51,7 @@ public final class AccessibilityPermissionManager: ObservableObject {
                 } catch {
                     break
                 }
-                
+
                 let trusted = AXIsProcessTrusted()
                 if let self {
                     if self.isPermissionGranted != trusted {
