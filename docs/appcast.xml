@@ -6,6 +6,18 @@
         <description>Most recent changes with links to updates.</description>
         <language>en</language>
         <item>
+            <title>Version 0.0.6</title>
+            <sparkle:version>0.0.6</sparkle:version>
+            <sparkle:shortVersionString>0.0.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <pubDate>Mon, 13 Jul 2026 16:01:37 +0000</pubDate>
+            <enclosure
+                url="https://github.com/ecgan/macs-bar/releases/download/0.0.6/MacsBar.zip"
+                sparkle:edSignature="WY7P15vuT/gjhmP5Cf4+JmhNyIKIog4S7bmKrvEMrnhmITSzCerwQE7agc2yOV/J07pxPlIzhol6Ws9q+VAHDw=="
+                length="1453155"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 0.0.5</title>
             <sparkle:version>0.0.5</sparkle:version>
             <sparkle:shortVersionString>0.0.5</sparkle:shortVersionString>
