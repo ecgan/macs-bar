@@ -18,10 +18,9 @@ This document outlines the procedure for preparing, building, signing, and publi
    - [Step 1: Update Version Info](#step-1-update-version-info)
    - [Step 2: Build the App Bundle](#step-2-build-the-app-bundle)
    - [Step 3: Notarize and Staple the App](#step-3-notarize-and-staple-the-app)
-   - [Step 4: Sign the Final Archive for Sparkle](#step-4-sign-the-final-archive-for-sparkle)
-   - [Step 5: Create a GitHub Release](#step-5-create-a-github-release)
-   - [Step 6: Update the Appcast Update Feed](#step-6-update-the-appcast-update-feed)
-   - [Step 7: Deploy the Update Feed](#step-7-deploy-the-update-feed)
+   - [Step 4: Sign the Archive and Update the Appcast Feed](#step-4-sign-the-archive-and-update-the-appcast-feed)
+   - [Step 5: Push Commits and Tag to GitHub](#step-5-push-commits-and-tag-to-github)
+   - [Step 6: Create a GitHub Release](#step-6-create-a-github-release)
 3. [🛠️ Local Installation & Verification](#️-local-installation--verification)
 
 ---
@@ -30,23 +29,20 @@ This document outlines the procedure for preparing, building, signing, and publi
 
 Before performing your first Sparkle-enabled release, complete these initial configuration steps.
 
+> [!NOTE]
+> All release scripts are Python scripts located in the `scripts/` folder at the repository root. They can be run from the repository root without any `cd` needed (e.g. `./scripts/build_app.py`). Python 3 must be available on your system, which is standard on macOS.
+
 ### 1. Configure Code Signing
 
 To avoid exposing personal developer signing identities in public documentation or scripts, configuration is managed via a machine-specific `build.config` file. This file is configured in the `.gitignore` to prevent it from being committed.
 
-1. Navigate to the `app` directory:
+1. Copy the example configuration:
 
    ```bash
-   cd app
+   cp app/build.config.example app/build.config
    ```
 
-2. Copy the example configuration:
-
-   ```bash
-   cp build.config.example build.config
-   ```
-
-3. Open `build.config` and set your personal codesigning identity:
+2. Open `app/build.config` and set your personal codesigning identity:
 
    ```bash
    CODESIGN_IDENTITY="Apple Development: Your Name (XXXXXXXXXX)"
@@ -96,8 +92,7 @@ NOTARY_KEYCHAIN_PROFILE="notary-macsbar"
 Run the build script once to fetch dependencies (via Swift Package Manager (SPM)) and compile the app. This makes Sparkle's command-line tools available in `app/.build/` for the key generation step below.
 
 ```bash
-cd app
-./build-app.sh
+./scripts/build_app.py
 ```
 
 ### 4. Generate Sparkle EdDSA Keys
@@ -170,14 +165,14 @@ Perform these steps for each new version you publish.
 
 Before compiling the app, update the version identifiers in `app/Info.plist` to match the target release.
 
-You can use the helper script [app/bump-version.sh](/app/bump-version.sh) to automate this. Run it from the repository root:
+Run the version bump script from the repository root:
 
 ```bash
-./app/bump-version.sh [optional-version-number]
+./scripts/bump_version.py [optional-version-number]
 ```
 
 - If you don't provide a version number, it will prompt you with the next patch version as a default. Press **Enter** to accept it, or type your desired version.
-- If you provide a version number (e.g., `./app/bump-version.sh 0.2.0`), it will update the version immediately without prompting.
+- If you provide a version number (e.g., `./scripts/bump_version.py 0.2.0`), it will update the version immediately without prompting.
 
 This script updates both `CFBundleVersion` and `CFBundleShortVersionString` in `app/Info.plist`, stages and commits the change, and tags the commit with the new version number.
 
@@ -186,86 +181,58 @@ This script updates both `CFBundleVersion` and `CFBundleShortVersionString` in `
 
 ### Step 2: Build the App Bundle
 
-Navigate to the `app` directory and compile the production bundle:
+Compile the production bundle from the repository root:
 
 ```bash
-cd app
-./build-app.sh
+./scripts/build_app.py
 ```
 
-_This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app with hardened runtime and a secure timestamp using the `CODESIGN_IDENTITY` specified in your local `build.config`._
+_This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app with hardened runtime and a secure timestamp using the `CODESIGN_IDENTITY` specified in your local `app/build.config`._
 
 ### Step 3: Notarize and Staple the App
 
-Notarize the application using the Apple Notary Service so that users can run it without Gatekeeper warnings. This script will zip the app, submit it, wait for Apple's approval, staple the notarization ticket, and output the final `MacsBar.zip`:
+Notarize the application using the Apple Notary Service so that users can run it without Gatekeeper warnings. This script will zip the app, submit it, wait for Apple's approval, staple the notarization ticket, and output the final `app/MacsBar.zip`:
 
 ```bash
-./notarize-app.sh
+./scripts/notarize_app.py
 ```
 
 > [!IMPORTANT]
 > Notarization and stapling **must** occur before generating the Sparkle signature. Stapling modifies the `.app` bundle (it adds the ticket to it), which changes the file signature of the final `.zip` archive.
 
-### Step 4: Sign the Final Archive for Sparkle
+### Step 4: Sign the Archive and Update the Appcast Feed
 
-Sign the final `MacsBar.zip` archive using Sparkle's `sign_update` tool:
+Sign the final `app/MacsBar.zip` archive and automatically update `docs/appcast.xml` with the new release entry:
 
 ```bash
-./sign-update.sh
+./scripts/sign_update.py
 ```
 
-This command prints a signature and length. **Copy these two values:**
+This script will:
 
-```text
-sparkle:edSignature="xxxxxx..." length="yyyyyy"
+1. Run Sparkle's `sign_update` tool on `app/MacsBar.zip` to generate the EdDSA signature and file length.
+2. Insert a new `<item>` entry into `docs/appcast.xml` (or replace an existing entry for the same version).
+3. Automatically commit `docs/appcast.xml` with the message `Update appcast.xml for version <version_number>`.
+
+### Step 5: Push Commits and Tag to GitHub
+
+Push all local commits (version bump + appcast update) and the version tag to `main`. This also triggers GitHub Pages to publish the updated `appcast.xml`:
+
+```bash
+git push origin main --tags
 ```
 
-### Step 5: Create a GitHub Release
+> [!IMPORTANT]
+> Push **before** creating the GitHub Release. This ensures the tag exists on the remote and that `--generate-notes` can correctly reference all commits when generating release notes.
 
-Upload the signed archive `MacsBar.zip` as a release asset under the new git tag created by the bump script (e.g. `0.2.0`).
+### Step 6: Create a GitHub Release
+
+Upload the signed archive `app/MacsBar.zip` as a release asset under the version tag (e.g. `0.2.0`).
 
 Using the GitHub CLI (`gh`):
 
 ```bash
-gh release create 0.2.0 MacsBar.zip --title "0.2.0" --generate-notes
-```
-
-### Step 6: Update the Appcast Update Feed
-
-Open `docs/appcast.xml` and add a new `<item>` entry inside the `<channel>` tag. Place it above any older releases:
-
-```xml
-<item>
-    <title>Version 0.2.0</title>
-    <sparkle:version>2</sparkle:version>
-    <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
-    <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-    <pubDate>Mon, 25 May 2026 22:15:53 +0800</pubDate>
-    <enclosure
-        url="https://github.com/ecgan/macs-bar/releases/download/0.2.0/MacsBar.zip"
-        sparkle:edSignature="PASTE_SIGNATURE_HERE"
-        length="PASTE_LENGTH_HERE"
-        type="application/octet-stream" />
-</item>
-```
-
-#### Core Fields Explained
-
-- **`sparkle:version`**: Must match `CFBundleVersion` in the app's `Info.plist`.
-- **`sparkle:shortVersionString`**: Must match `CFBundleShortVersionString` in the app's `Info.plist`.
-- **`pubDate`**: The publication timestamp. Use RFC 822/RFC 2822 format (e.g., `date -u +'%a, %d %b %Y %H:%M:%S GMT'`).
-- **`url`**: The direct download URL for the signed zip asset on GitHub Releases.
-- **`sparkle:edSignature`**: The EdDSA signature string copied from Step 4.
-- **`length`**: The file size in bytes copied from Step 4.
-
-### Step 7: Deploy the Update Feed
-
-Commit and push the updated `appcast.xml` to `main`. This triggers GitHub Pages to publish the new updates XML file:
-
-```bash
-git add docs/appcast.xml
-git commit -m "chore: publish release v0.2.0 appcast"
-git push origin main
+gh release create 0.2.0 app/MacsBar.zip --title "0.2.0" --generate-notes
 ```
 
 ---

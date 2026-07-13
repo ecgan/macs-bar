@@ -38,3 +38,7 @@ _site/
 .jekyll-cache/
 .jekyll-metadata
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
