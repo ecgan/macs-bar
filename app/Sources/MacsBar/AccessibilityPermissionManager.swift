@@ -5,11 +5,17 @@ import AppKit
 @MainActor
 public final class AccessibilityPermissionManager: ObservableObject {
     @Published public private(set) var isPermissionGranted: Bool = false
-    private var pollTask: Task<Void, Never>?
+    // `nonisolated(unsafe)` allows deinit (which cannot be @MainActor-isolated) to cancel
+    // the task. All other access happens on the main actor, so there is no data race.
+    nonisolated(unsafe) private var pollTask: Task<Void, Never>?
 
     public init() {
         checkStatus()
         startPolling()
+    }
+
+    deinit {
+        pollTask?.cancel()
     }
 
     public func checkStatus() {
