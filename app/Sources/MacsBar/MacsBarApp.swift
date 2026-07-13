@@ -145,7 +145,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 for screen in NSScreen.screens {
                     guard let uuid = MacWindowTracker.displayUUID(for: screen),
                           let currentSpaceId = displaySpaces[uuid]?.first else { continue }
-                       let screenWindows = windows.filter { $0.frame.intersects(screen.quartzFrame) }
+                    let screenWindows = windows.filter { $0.frame.intersects(screen.quartzFrame) }
                     updatePanelForSpace(currentSpaceId, windows: screenWindows, screen: screen)
                 }
             }
