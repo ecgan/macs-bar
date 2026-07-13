@@ -175,7 +175,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
         if !permissionManager.isPermissionGranted {
-            permissionManager.requestPermission()
+            permissionManager.promptUserForPermission()
         }
 
         NotificationCenter.default.addObserver(

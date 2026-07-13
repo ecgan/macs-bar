@@ -25,13 +25,11 @@ public final class AccessibilityPermissionManager: ObservableObject {
         }
     }
 
-    public func requestPermission() {
-        // Trigger system prompt
+    /// Triggers the macOS system permission dialog asking the user to grant Accessibility access.
+    /// Polling is already running from `init()`, so no additional setup is needed here.
+    public func promptUserForPermission() {
         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         AXIsProcessTrustedWithOptions(options)
-        
-        // Start polling if not granted
-        startPolling()
     }
 
     public func startPolling() {
