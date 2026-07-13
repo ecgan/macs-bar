@@ -4,28 +4,11 @@ import sys
 import shutil
 import subprocess
 
+from utils import load_build_config
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 APP_DIR = os.path.join(REPO_ROOT, 'app')
-BUILD_CONFIG = os.path.join(APP_DIR, 'build.config')
-
-def load_build_config():
-    config = {}
-    if not os.path.exists(BUILD_CONFIG):
-        print(f"Error: build.config not found at {BUILD_CONFIG}.", file=sys.stderr)
-        print("Please copy build.config.example to build.config and configure your signing identity.", file=sys.stderr)
-        sys.exit(1)
-    with open(BUILD_CONFIG, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if '=' in line:
-                key, val = line.split('=', 1)
-                key = key.strip()
-                val = val.strip().strip('"').strip("'")
-                config[key] = val
-    return config
 
 def main():
     config = load_build_config()
