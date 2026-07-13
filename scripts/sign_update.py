@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 import os
 import sys
 import re
@@ -19,7 +20,6 @@ def find_sign_tool():
         return default_path
 
     # Fallback search
-    import glob
     search_pattern = os.path.join(APP_DIR, '.build', '**', 'sign_update')
     matches = glob.glob(search_pattern, recursive=True)
     for path in matches:
