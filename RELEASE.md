@@ -17,7 +17,7 @@ This document outlines the procedure for preparing, building, signing, and publi
 2. [Step-by-Step Release Process](#step-by-step-release-process)
    - [Step 1: Update Version Info](#step-1-update-version-info)
    - [Step 2: Build the App Bundle](#step-2-build-the-app-bundle)
-   - [Step 3: Notarize and Staple the App](#step-3-notarize-and-staple-the-app)
+   - [Step 3: Package, Notarize, and Staple the Disk Image](#step-3-package-notarize-and-staple-the-disk-image)
    - [Step 4: Sign the Archive and Update the Appcast Feed](#step-4-sign-the-archive-and-update-the-appcast-feed)
    - [Step 5: Push Commits and Tag to GitHub](#step-5-push-commits-and-tag-to-github)
    - [Step 6: Create a GitHub Release](#step-6-create-a-github-release)
@@ -42,11 +42,13 @@ To avoid exposing personal developer signing identities in public documentation 
    cp app/build.config.example app/build.config
    ```
 
-2. Open `app/build.config` and set your personal codesigning identity:
+2. Open `app/build.config` and set your Developer ID Application identity:
 
    ```bash
-   CODESIGN_IDENTITY="Apple Development: Your Name (XXXXXXXXXX)"
+   CODESIGN_IDENTITY="Developer ID Application: Your Name (XXXXXXXXXX)"
    ```
+
+   An ad-hoc (`-`) or Apple Development identity may be used for local development, but it cannot be used for a notarized release.
 
    > [!TIP]
    > You can list your available macOS signing identities by running:
@@ -189,20 +191,27 @@ Compile the production bundle from the repository root:
 
 _This script compiles the release bundle, embeds `Sparkle.framework`, sets up RPath, and signs the app with hardened runtime and a secure timestamp using the `CODESIGN_IDENTITY` specified in your local `app/build.config`._
 
-### Step 3: Notarize and Staple the App
+### Step 3: Package, Notarize, and Staple the Disk Image
 
-Notarize the application using the Apple Notary Service so that users can run it without Gatekeeper warnings. This script will zip the app, submit it, wait for Apple's approval, staple the notarization ticket, and output the final `app/MacsBar.zip`:
+Create the drag-and-drop disk image and notarize it using the Apple Notary Service so users can install the app without Gatekeeper warnings. The script will:
+
+1. Verify the signature of `MacsBar.app`.
+2. Create an APFS/LZFSE-compressed disk image containing `MacsBar.app` and an `/Applications` symlink.
+3. Sign the disk image with the configured Developer ID Application identity.
+4. Submit the disk image and wait for Apple's approval.
+5. Staple and validate the notarization ticket.
+6. Output the final `app/MacsBar.dmg`.
 
 ```bash
 ./scripts/notarize_app.py
 ```
 
 > [!IMPORTANT]
-> Notarization and stapling **must** occur before generating the Sparkle signature. Stapling modifies the `.app` bundle (it adds the ticket to it), which changes the file signature of the final `.zip` archive.
+> Notarization and stapling **must** occur before generating the Sparkle signature. Stapling modifies the disk image, so the final `app/MacsBar.dmg` must be signed by Sparkle afterward.
 
 ### Step 4: Sign the Archive and Update the Appcast Feed
 
-Sign the final `app/MacsBar.zip` archive and automatically update `docs/appcast.xml` with the new release entry:
+Sign the final `app/MacsBar.dmg` archive and automatically update `docs/appcast.xml` with the new release entry:
 
 ```bash
 ./scripts/sign_update.py
@@ -210,7 +219,7 @@ Sign the final `app/MacsBar.zip` archive and automatically update `docs/appcast.
 
 This script will:
 
-1. Run Sparkle's `sign_update` tool on `app/MacsBar.zip` to generate the EdDSA signature and file length.
+1. Run Sparkle's `sign_update` tool on `app/MacsBar.dmg` to generate the EdDSA signature and file length.
 2. Insert a new `<item>` entry into `docs/appcast.xml` (or replace an existing entry for the same version).
 3. Automatically commit `docs/appcast.xml` with the message `Update appcast.xml for version <version_number>`.
 
@@ -227,26 +236,22 @@ git push origin main --tags
 
 ### Step 6: Create a GitHub Release
 
-Upload the signed archive `app/MacsBar.zip` as a release asset under the version tag (e.g. `0.2.0`).
+Upload the signed disk image `app/MacsBar.dmg` as a release asset under the version tag (e.g. `0.2.0`).
 
 Using the GitHub CLI (`gh`):
 
 ```bash
-gh release create 0.2.0 app/MacsBar.zip --title "0.2.0" --generate-notes
+gh release create 0.2.0 app/MacsBar.dmg --title "0.2.0" --generate-notes
 ```
 
 ---
 
-## 🛠️ Local Installation & Verification
+## 🛠️ Installation & Verification
 
-To install your newly compiled application locally for manual testing:
+Open the disk image and drag **MacsBar** onto the **Applications** shortcut. Before publishing, verify the final release artifact:
 
 ```bash
-# Copy the app to the Applications folder
-# NOTE: Use ditto (not cp -r) to correctly preserve symlinks inside
-# framework bundles like Sparkle.framework
-ditto app/MacsBar.app /Applications/MacsBar.app
-
-# Open and run the installed application
-open /Applications/MacsBar.app
+hdiutil verify app/MacsBar.dmg
+codesign --verify --verbose=2 app/MacsBar.dmg
+xcrun stapler validate app/MacsBar.dmg
 ```
