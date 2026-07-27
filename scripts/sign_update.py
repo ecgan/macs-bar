@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 APP_DIR = os.path.join(REPO_ROOT, 'app')
-DIST_ZIP = os.path.join(APP_DIR, 'MacsBar.zip')
+ARCHIVE_NAME = 'MacsBar.dmg'
+DIST_ARCHIVE = os.path.join(APP_DIR, ARCHIVE_NAME)
 APPCAST_PATH = os.path.join(REPO_ROOT, 'docs', 'appcast.xml')
 INFO_PLIST = os.path.join(APP_DIR, 'Info.plist')
 
@@ -54,8 +55,8 @@ def get_minimum_system_version():
     return minimum_version
 
 def main():
-    if not os.path.exists(DIST_ZIP):
-        print(f"Error: {DIST_ZIP} not found. Please run notarize_app.py first.", file=sys.stderr)
+    if not os.path.exists(DIST_ARCHIVE):
+        print(f"Error: {DIST_ARCHIVE} not found. Please run notarize_app.py first.", file=sys.stderr)
         sys.exit(1)
 
     sign_tool = find_sign_tool()
@@ -67,9 +68,9 @@ def main():
     version, build = get_app_version()
     minimum_system_version = get_minimum_system_version()
 
-    print(f"Signing MacsBar.zip for Sparkle update (v{version})...")
+    print(f"Signing {ARCHIVE_NAME} for Sparkle update (v{version})...")
     try:
-        result = subprocess.run([sign_tool, DIST_ZIP], capture_output=True, text=True, check=True)
+        result = subprocess.run([sign_tool, DIST_ARCHIVE], capture_output=True, text=True, check=True)
         sign_output = result.stdout.strip()
     except subprocess.CalledProcessError as e:
         print(f"Error: Failed to run sign_update: {e}", file=sys.stderr)
@@ -100,7 +101,7 @@ def main():
             <sparkle:minimumSystemVersion>{minimum_system_version}</sparkle:minimumSystemVersion>
             <pubDate>{pub_date}</pubDate>
             <enclosure
-                url="https://github.com/ecgan/macs-bar/releases/download/{version}/MacsBar.zip"
+                url="https://github.com/ecgan/macs-bar/releases/download/{version}/{ARCHIVE_NAME}"
                 sparkle:edSignature="{ed_signature}"
                 length="{length}"
                 type="application/octet-stream" />
