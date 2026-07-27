@@ -1,9 +1,10 @@
 # Build configuration for MacsBar
 # Copy this file to build.config and update the values.
-# This file is sourced by build-app.sh
+# This file is read by the Python scripts in ../scripts.
 
 # Code signing identity. Use "security find-identity -v -p codesigning" to list available identities.
-# Use "-" for ad-hoc signing (default).
+# Use "-" for local ad-hoc signing. Notarized releases require a
+# "Developer ID Application" identity.
 CODESIGN_IDENTITY="-"
 
 # Credentials for App Store Connect notarization.
