@@ -19,18 +19,28 @@ Macs Bar displays a compact taskbar panel showing all windows in your current Sp
 
 ### Requirements
 
-- macOS 13 or later
+- macOS 14 or later
 - Accessibility permissions (for window tracking and keyboard shortcuts)
+
+### Download
+
+1. Download `MacsBar.dmg` from the
+   [latest release](https://github.com/ecgan/macs-bar/releases/latest).
+2. Open the disk image.
+3. Drag **MacsBar** onto the **Applications** shortcut.
+4. Launch MacsBar from the Applications folder.
 
 ### Build from Source
 
 ```bash
+# Configure your local signing identity
+cp app/build.config.example app/build.config
+
 # Build the app bundle
-cd app
-./build-app.sh
+./scripts/build_app.py
 
 # Run it
-open MacsBar.app
+open app/MacsBar.app
 ```
 
 Or run directly during development:
