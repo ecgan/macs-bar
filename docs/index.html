@@ -54,10 +54,10 @@ layout: null
       <p>A lightweight macOS window taskbar that aggregates, displays, and switches between open windows in your current desktop Space with premium zero-flicker space transitions.</p>
       
       <div class="hero-cta">
-        <a href="https://github.com/{{ site.github_username }}/macs-bar" class="btn btn-primary">
-          View on GitHub
+        <a href="https://github.com/{{ site.github_username }}/macs-bar/releases/latest" class="btn btn-primary">
+          Download Latest Release
         </a>
-        <a href="#install" class="btn btn-secondary">Get Started</a>
+        <a href="https://github.com/{{ site.github_username }}/macs-bar" class="btn btn-secondary">View on GitHub</a>
       </div>
 
       <!-- Simulated App UI Showcase -->
@@ -135,28 +135,28 @@ layout: null
         
         <div class="guide-info">
           <h2>Getting Started</h2>
-          <p>Building Macs Bar is incredibly simple. You can clone the repository, build the binary bundle using our helper scripts, and run the app locally in seconds.</p>
+          <p>Download the latest disk image, drag Macs Bar into Applications, and grant Accessibility permission on first launch.</p>
           
           <ul class="steps">
             <li class="step-item">
               <div class="step-num">1</div>
               <div class="step-text">
                 <h4>System Requirements</h4>
-                <p>Compatible with macOS 13 (Ventura) or later.</p>
+                <p>Compatible with macOS 14 (Sonoma) or later.</p>
               </div>
             </li>
             <li class="step-item">
               <div class="step-num">2</div>
               <div class="step-text">
-                <h4>Grant Permissions</h4>
-                <p>Provide Accessibility permissions in System Settings on first launch to allow window tracking.</p>
+                <h4>Install Macs Bar</h4>
+                <p>Open MacsBar.dmg and drag MacsBar onto the Applications shortcut.</p>
               </div>
             </li>
             <li class="step-item">
               <div class="step-num">3</div>
               <div class="step-text">
-                <h4>Run & Switch</h4>
-                <p>Click your taskbar windows or use keyboard shortcuts to jump effortlessly between active tasks.</p>
+                <h4>Grant Permissions</h4>
+                <p>Launch the app and provide Accessibility permission in System Settings when prompted.</p>
               </div>
             </li>
           </ul>
@@ -164,18 +164,17 @@ layout: null
 
         <div class="code-box">
           <div class="code-header">
-            <div class="code-title">Terminal — Quick Install</div>
+            <div class="code-title">Install Macs Bar</div>
           </div>
           <div class="code-body">
-            <span class="code-line"><span class="code-comment"># 1. Clone the repository</span></span>
-            <span class="code-line"><span class="code-prompt">$</span>git clone https://github.com/{{ site.github_username }}/macs-bar.git</span>
-            <span class="code-line"><span class="code-prompt">$</span>cd macs-bar/app</span>
+            <span class="code-line"><span class="code-comment"># 1. Download the latest release</span></span>
+            <span class="code-line">MacsBar.dmg</span>
             <span class="code-line"></span>
-            <span class="code-line"><span class="code-comment"># 2. Build the app bundle</span></span>
-            <span class="code-line"><span class="code-prompt">$</span>./build-app.sh</span>
+            <span class="code-line"><span class="code-comment"># 2. Open the disk image</span></span>
+            <span class="code-line">Drag MacsBar → Applications</span>
             <span class="code-line"></span>
-            <span class="code-line"><span class="code-comment"># 3. Launch the app</span></span>
-            <span class="code-line"><span class="code-prompt">$</span>open MacsBar.app</span>
+            <span class="code-line"><span class="code-comment"># 3. Launch from Applications</span></span>
+            <span class="code-line">Grant Accessibility permission</span>
           </div>
         </div>
 
