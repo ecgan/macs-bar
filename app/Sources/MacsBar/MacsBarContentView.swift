@@ -25,18 +25,18 @@ struct MacsBarContentView: View {
                     y: state.presentation == .expanded ? 1 : 0.82,
                     anchor: .bottom
                 )
-                .allowsHitTesting(state.presentation == .expanded)
                 .onHover { isHovering in
                     state.setHovering(isHovering, target: .pill)
                 }
+                .allowsHitTesting(state.presentation == .expanded)
 
             revealHandle
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .opacity(state.presentation == .collapsed ? 1 : 0)
-                .allowsHitTesting(state.presentation == .collapsed)
                 .onHover { isHovering in
                     state.setHovering(isHovering, target: .revealHandle)
                 }
+                .allowsHitTesting(state.presentation == .collapsed)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)

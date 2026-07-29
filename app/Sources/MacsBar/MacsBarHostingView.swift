@@ -14,6 +14,7 @@ class MacsBarHostingView: NSHostingView<AnyView> {
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard let state else { return nil }
+        let localPoint = convert(point, from: superview)
 
         let interactiveFrame: CGRect?
         switch state.presentation {
@@ -31,7 +32,7 @@ class MacsBarHostingView: NSHostingView<AnyView> {
             )
         }
 
-        guard let interactiveFrame, interactiveFrame.contains(point) else { return nil }
+        guard let interactiveFrame, interactiveFrame.contains(localPoint) else { return nil }
         return super.hitTest(point)
     }
 }

@@ -1,5 +1,7 @@
+import AppKit
 import CoreGraphics
 import MacWindowTracker
+import SwiftUI
 import Testing
 @testable import MacsBar
 
@@ -86,6 +88,35 @@ struct BarVisibilityTests {
             focusedWindowOverlapsPill: true,
             isPointerInside: false
         ) == .expanded)
+    }
+
+    @Test("Hosting view converts superview coordinates before filtering hits")
+    @MainActor
+    func hostingViewHitTestCoordinates() {
+        let state = makeState()
+        let window = makeWindow(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        state.updatePillWidth(200)
+        state.updateContext(
+            windows: [window],
+            screenFrame: screenFrame,
+            focusedWindowFrame: window.frame,
+            visibilityMode: .alwaysVisible,
+            isFullscreenSuppressed: false
+        )
+
+        let container = NSView(frame: CGRect(x: 0, y: 0, width: 1_000, height: 100))
+        let hostingView = MacsBarHostingView(
+            rootView: AnyView(Rectangle().fill(Color.red))
+        )
+        hostingView.frame = CGRect(x: 300, y: 20, width: 500, height: BarMetrics.panelHeight)
+        hostingView.state = state
+        container.addSubview(hostingView)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let pillCenterInHostingView = NSPoint(x: hostingView.bounds.midX, y: hostingView.bounds.midY)
+        let pillCenterInContainer = hostingView.convert(pillCenterInHostingView, to: container)
+
+        #expect(hostingView.hitTest(pillCenterInContainer) != nil)
     }
 
     @Test("Hover reveal waits before collapsing again")
