@@ -89,6 +89,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let barHeight: CGFloat = 36
     private var autoHideEnabled = UserDefaults.standard.bool(forKey: AppSettings.autoHideEnabledKey)
+    private var autoHideActivationHeight: CGFloat = {
+        let storedValue = UserDefaults.standard.object(
+            forKey: AppSettings.autoHideActivationHeightKey
+        ) as? Double ?? AppSettings.defaultAutoHideActivationHeight
+        let clampedValue = min(
+            max(storedValue, AppSettings.autoHideActivationHeightRange.lowerBound),
+            AppSettings.autoHideActivationHeightRange.upperBound
+        )
+        return CGFloat(clampedValue)
+    }()
     private var autoHideTimer: Timer?
     private var panelScreenFrames: [Int: NSRect] = [:]
     private var autoHideShownStates: [Int: Bool] = [:]
@@ -186,7 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .publisher(for: UserDefaults.didChangeNotification, object: UserDefaults.standard)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.refreshAutoHideSetting()
+                self?.refreshAutoHideSettings()
             }
 
         if !permissionManager.isPermissionGranted {
@@ -497,25 +507,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Auto Hide
 
-    private func refreshAutoHideSetting() {
-        let newValue = UserDefaults.standard.bool(forKey: AppSettings.autoHideEnabledKey)
-        guard newValue != autoHideEnabled else { return }
+    private func refreshAutoHideSettings() {
+        let defaults = UserDefaults.standard
+        let newEnabledValue = defaults.bool(forKey: AppSettings.autoHideEnabledKey)
+        let storedActivationHeight = defaults.object(
+            forKey: AppSettings.autoHideActivationHeightKey
+        ) as? Double ?? AppSettings.defaultAutoHideActivationHeight
+        let newActivationHeight = CGFloat(min(
+            max(storedActivationHeight, AppSettings.autoHideActivationHeightRange.lowerBound),
+            AppSettings.autoHideActivationHeightRange.upperBound
+        ))
+        let enabledChanged = newEnabledValue != autoHideEnabled
+        let activationHeightChanged = newActivationHeight != autoHideActivationHeight
 
-        autoHideEnabled = newValue
+        guard enabledChanged || activationHeightChanged else { return }
+
+        autoHideEnabled = newEnabledValue
+        autoHideActivationHeight = newActivationHeight
         cancelAllPendingAutoHideTransitions()
 
-        if newValue {
+        if enabledChanged && newEnabledValue {
             for spaceId in panels.keys {
                 setAutoHideShown(false, for: spaceId, animated: true)
             }
             if isTrackerStarted {
                 startAutoHideTracking()
             }
-        } else {
+        } else if enabledChanged {
             stopAutoHideTracking()
             for spaceId in panels.keys where !fullscreenHiddenSpaces.contains(spaceId) {
                 setAutoHideShown(true, for: spaceId, animated: true)
             }
+        } else if newEnabledValue {
+            updateAutoHideForMouseLocation()
         }
     }
 
@@ -554,6 +578,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 mouseLocation: mouseLocation,
                 screenFrame: screenFrame,
                 barHeight: barHeight,
+                activationHeight: autoHideActivationHeight,
                 isBarShown: isShown
             )
             requestAutoHideState(shouldShow, for: spaceId)

@@ -2,7 +2,6 @@ import AppKit
 import QuartzCore
 
 enum AutoHidePolicy {
-    static let activationHeight: CGFloat = 2
     static let revealDelay: TimeInterval = 0.15
     static let hideDelay: TimeInterval = 0.30
     static let animationDuration: TimeInterval = 0.22
@@ -11,6 +10,7 @@ enum AutoHidePolicy {
         mouseLocation: CGPoint,
         screenFrame: CGRect,
         barHeight: CGFloat,
+        activationHeight: CGFloat,
         isBarShown: Bool
     ) -> Bool {
         let isOnScreen = mouseLocation.x >= screenFrame.minX
@@ -20,7 +20,7 @@ enum AutoHidePolicy {
 
         guard isOnScreen else { return false }
 
-        let activeHeight = isBarShown ? barHeight : activationHeight
+        let activeHeight = isBarShown ? barHeight : max(0, activationHeight)
         return mouseLocation.y <= screenFrame.minY + activeHeight
     }
 }
