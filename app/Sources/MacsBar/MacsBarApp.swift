@@ -83,10 +83,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterService = UpdaterService()
     let permissionManager = AccessibilityPermissionManager()
     private var permissionCancellable: AnyCancellable?
+    private var settingsCancellable: AnyCancellable?
     private var isTrackerStarted = false
     private var activeSpaceId: Int = 0
 
     private let barHeight: CGFloat = 36
+    private var autoHideEnabled = UserDefaults.standard.bool(forKey: AppSettings.autoHideEnabledKey)
+    private var autoHideTimer: Timer?
+    private var panelScreenFrames: [Int: NSRect] = [:]
+    private var autoHideShownStates: [Int: Bool] = [:]
+    private var pendingAutoHideTransitions: [Int: DispatchWorkItem] = [:]
+    private var pendingAutoHideTargets: [Int: Bool] = [:]
+    private var fullscreenHiddenSpaces: Set<Int> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
@@ -174,6 +182,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
 
+        settingsCancellable = NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification, object: UserDefaults.standard)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshAutoHideSetting()
+            }
+
         if !permissionManager.isPermissionGranted {
             permissionManager.promptUserForPermission()
         }
@@ -205,6 +220,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             keyboardShortcutHandler.tracker = tracker
             keyboardShortcutHandler.shortcutStorage = shortcutStorage
             keyboardShortcutHandler.start()
+
+            if autoHideEnabled {
+                startAutoHideTracking()
+            }
         } catch {
             print("Failed to start window tracker: \(error)")
         }
@@ -216,12 +235,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         windowTracker?.stop()
         keyboardShortcutHandler.stop()
+        stopAutoHideTracking()
 
         for panel in panels.values {
             panel.orderOut(nil)
         }
         panels.removeAll()
         spaceStates.removeAll()
+        panelScreenFrames.removeAll()
+        autoHideShownStates.removeAll()
+        fullscreenHiddenSpaces.removeAll()
 
         isTrackerStarted = false
     }
@@ -260,7 +283,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .environmentObject(permissionManager)
         let hostingView = MacsBarHostingView(rootView: AnyView(contentView))
         hostingView.state = state
-        panel.contentView = hostingView
+        let panelContentView = MacsBarPanelContentView(
+            hostingView: hostingView,
+            frame: NSRect(origin: .zero, size: panel.frame.size)
+        )
+        panelContentView.autoresizingMask = [.width, .height]
+        panel.contentView = panelContentView
+
+        panelScreenFrames[spaceId] = screen.frame
+        autoHideShownStates[spaceId] = !autoHideEnabled
+        panelContentView.setBarShown(!autoHideEnabled, animated: false)
 
         // Deferred reveal: hide → order front → move to space → reveal next run loop turn
         // Check fullscreen again before revealing since space status may have changed
@@ -339,9 +371,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let invalidKeys = panels.keys.filter { !validSet.contains($0) }
 
         for spaceId in invalidKeys {
+            cancelPendingAutoHideTransition(for: spaceId)
             panels[spaceId]?.orderOut(nil)
             panels.removeValue(forKey: spaceId)
             spaceStates.removeValue(forKey: spaceId)
+            panelScreenFrames.removeValue(forKey: spaceId)
+            autoHideShownStates.removeValue(forKey: spaceId)
+            fullscreenHiddenSpaces.remove(spaceId)
         }
     }
 
@@ -351,8 +387,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         for panel in panels.values {
             panel.orderOut(nil)
         }
+        cancelAllPendingAutoHideTransitions()
         panels.removeAll()
         spaceStates.removeAll()
+        panelScreenFrames.removeAll()
+        autoHideShownStates.removeAll()
+        fullscreenHiddenSpaces.removeAll()
 
         Task { await windowTracker?.refresh() }
     }
@@ -408,7 +448,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let panel = panels[spaceId] else { return }
 
         let shouldHide = shouldHidePanelForFullscreen(spaceId: spaceId, windows: windows, screen: screen)
-        panel.alphaValue = shouldHide ? 0 : 1
+        if shouldHide {
+            fullscreenHiddenSpaces.insert(spaceId)
+            cancelPendingAutoHideTransition(for: spaceId)
+            if autoHideEnabled {
+                setAutoHideShown(false, for: spaceId, animated: false)
+            }
+            panel.alphaValue = 0
+        } else {
+            fullscreenHiddenSpaces.remove(spaceId)
+            panel.alphaValue = 1
+            if !autoHideEnabled {
+                setAutoHideShown(true, for: spaceId, animated: false)
+            }
+        }
     }
 
     /// Check if a window is fullscreen (app-controlled fullscreen covering the entire screen including menu bar).
@@ -440,6 +493,118 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func screenDidChange() {
         activeSpaceId = MacWindowTracker.currentSpaceId()
         resetAllPanels()
+    }
+
+    // MARK: - Auto Hide
+
+    private func refreshAutoHideSetting() {
+        let newValue = UserDefaults.standard.bool(forKey: AppSettings.autoHideEnabledKey)
+        guard newValue != autoHideEnabled else { return }
+
+        autoHideEnabled = newValue
+        cancelAllPendingAutoHideTransitions()
+
+        if newValue {
+            for spaceId in panels.keys {
+                setAutoHideShown(false, for: spaceId, animated: true)
+            }
+            if isTrackerStarted {
+                startAutoHideTracking()
+            }
+        } else {
+            stopAutoHideTracking()
+            for spaceId in panels.keys where !fullscreenHiddenSpaces.contains(spaceId) {
+                setAutoHideShown(true, for: spaceId, animated: true)
+            }
+        }
+    }
+
+    private func startAutoHideTracking() {
+        guard autoHideTimer == nil else { return }
+
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.updateAutoHideForMouseLocation()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        autoHideTimer = timer
+        updateAutoHideForMouseLocation()
+    }
+
+    private func stopAutoHideTracking() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+        cancelAllPendingAutoHideTransitions()
+    }
+
+    private func updateAutoHideForMouseLocation() {
+        guard autoHideEnabled else { return }
+        let mouseLocation = NSEvent.mouseLocation
+
+        for spaceId in panels.keys {
+            guard !fullscreenHiddenSpaces.contains(spaceId),
+                  let screenFrame = panelScreenFrames[spaceId] else {
+                cancelPendingAutoHideTransition(for: spaceId)
+                continue
+            }
+
+            let isShown = autoHideShownStates[spaceId] ?? false
+            let shouldShow = AutoHidePolicy.shouldShowBar(
+                mouseLocation: mouseLocation,
+                screenFrame: screenFrame,
+                barHeight: barHeight,
+                isBarShown: isShown
+            )
+            requestAutoHideState(shouldShow, for: spaceId)
+        }
+    }
+
+    private func requestAutoHideState(_ shown: Bool, for spaceId: Int) {
+        if pendingAutoHideTargets[spaceId] == shown {
+            return
+        }
+
+        cancelPendingAutoHideTransition(for: spaceId)
+
+        guard autoHideShownStates[spaceId] != shown else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingAutoHideTransitions.removeValue(forKey: spaceId)
+            self.pendingAutoHideTargets.removeValue(forKey: spaceId)
+
+            guard self.autoHideEnabled,
+                  !self.fullscreenHiddenSpaces.contains(spaceId) else { return }
+            self.setAutoHideShown(shown, for: spaceId, animated: true)
+        }
+
+        pendingAutoHideTransitions[spaceId] = workItem
+        pendingAutoHideTargets[spaceId] = shown
+        let delay = shown ? AutoHidePolicy.revealDelay : AutoHidePolicy.hideDelay
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func setAutoHideShown(_ shown: Bool, for spaceId: Int, animated: Bool) {
+        guard let contentView = panels[spaceId]?.contentView as? MacsBarPanelContentView else {
+            return
+        }
+
+        autoHideShownStates[spaceId] = shown
+        contentView.setBarShown(shown, animated: animated)
+    }
+
+    private func cancelPendingAutoHideTransition(for spaceId: Int) {
+        pendingAutoHideTransitions.removeValue(forKey: spaceId)?.cancel()
+        pendingAutoHideTargets.removeValue(forKey: spaceId)
+    }
+
+    private func cancelAllPendingAutoHideTransitions() {
+        for workItem in pendingAutoHideTransitions.values {
+            workItem.cancel()
+        }
+        pendingAutoHideTransitions.removeAll()
+        pendingAutoHideTargets.removeAll()
     }
 }
 

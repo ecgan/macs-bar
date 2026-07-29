@@ -18,6 +18,6 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 450, height: 250)
+        .frame(width: 450, height: 300)
     }
 }

@@ -4,6 +4,7 @@ import Sparkle
 
 struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
+    @AppStorage(AppSettings.autoHideEnabledKey) private var autoHideEnabled = false
     @EnvironmentObject private var updaterService: UpdaterService
 
     private var automaticallyChecksForUpdates: Binding<Bool> {
@@ -15,6 +16,15 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
+            Toggle(isOn: $autoHideEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Automatically hide and show Macs Bar")
+                    Text("Reveal Macs Bar when the pointer reaches the bottom edge of the screen")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             Toggle(isOn: $launchAtLogin) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")
