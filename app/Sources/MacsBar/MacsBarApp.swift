@@ -105,6 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingAutoHideTransitions: [Int: DispatchWorkItem] = [:]
     private var pendingAutoHideTargets: [Int: Bool] = [:]
     private var fullscreenHiddenSpaces: Set<Int> = []
+    private var navigationModifiersHeld = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
@@ -116,6 +117,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.windowTracker = tracker
         keyboardShortcutHandler.onToggleAutoHide = { [weak self] in
             self?.toggleAutoHide()
+        }
+        keyboardShortcutHandler.onNavigationModifiersChanged = { [weak self] areHeld in
+            self?.navigationModifiersDidChange(areHeld)
         }
 
         // Hide Settings window during activation to prevent flash when NSApp.activate() is called
@@ -518,6 +522,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         refreshAutoHideSettings()
     }
 
+    private func navigationModifiersDidChange(_ areHeld: Bool) {
+        guard areHeld != navigationModifiersHeld else { return }
+        navigationModifiersHeld = areHeld
+
+        guard autoHideEnabled else { return }
+
+        if areHeld {
+            for spaceId in panels.keys where !fullscreenHiddenSpaces.contains(spaceId) {
+                cancelPendingAutoHideTransition(for: spaceId)
+                setAutoHideShown(true, for: spaceId, animated: true)
+            }
+        } else {
+            updateAutoHideForMouseLocation(hideImmediatelyWhenInactive: true)
+        }
+    }
+
     private func refreshAutoHideSettings() {
         let defaults = UserDefaults.standard
         let newEnabledValue = defaults.bool(forKey: AppSettings.autoHideEnabledKey)
@@ -573,7 +593,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         cancelAllPendingAutoHideTransitions()
     }
 
-    private func updateAutoHideForMouseLocation() {
+    private func updateAutoHideForMouseLocation(
+        hideImmediatelyWhenInactive: Bool = false
+    ) {
         guard autoHideEnabled else { return }
         let mouseLocation = NSEvent.mouseLocation
 
@@ -585,14 +607,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             let isShown = autoHideShownStates[spaceId] ?? false
-            let shouldShow = AutoHidePolicy.shouldShowBar(
+            let mouseRequestsReveal = AutoHidePolicy.shouldShowBar(
                 mouseLocation: mouseLocation,
                 screenFrame: screenFrame,
                 barHeight: barHeight,
                 activationHeight: autoHideActivationHeight,
                 isBarShown: isShown
             )
-            requestAutoHideState(shouldShow, for: spaceId)
+
+            if navigationModifiersHeld {
+                cancelPendingAutoHideTransition(for: spaceId)
+                setAutoHideShown(true, for: spaceId, animated: true)
+            } else if hideImmediatelyWhenInactive && !mouseRequestsReveal {
+                cancelPendingAutoHideTransition(for: spaceId)
+                setAutoHideShown(false, for: spaceId, animated: true)
+            } else {
+                requestAutoHideState(mouseRequestsReveal, for: spaceId)
+            }
         }
     }
 

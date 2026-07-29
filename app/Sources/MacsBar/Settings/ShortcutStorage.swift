@@ -56,6 +56,32 @@ struct KeyboardShortcut: Codable, Equatable {
     }
 }
 
+enum KeyboardShortcutMatcher {
+    private static let navigationActions: [ShortcutAction] = [
+        .previousWindow,
+        .nextWindow,
+    ]
+
+    static func resolvedShortcut(
+        for action: ShortcutAction,
+        overrides: [ShortcutAction: KeyboardShortcut]
+    ) -> KeyboardShortcut {
+        overrides[action] ?? KeyboardShortcut(
+            keyCode: action.defaultKeyCode,
+            modifiers: action.defaultModifiers
+        )
+    }
+
+    static func navigationModifiersExactlyMatch(
+        _ modifiers: NSEvent.ModifierFlags,
+        overrides: [ShortcutAction: KeyboardShortcut]
+    ) -> Bool {
+        navigationActions.contains { action in
+            resolvedShortcut(for: action, overrides: overrides).modifiers == modifiers
+        }
+    }
+}
+
 @MainActor
 class ShortcutStorage: ObservableObject {
     private let defaults: UserDefaults

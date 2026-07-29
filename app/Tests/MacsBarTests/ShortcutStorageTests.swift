@@ -54,6 +54,43 @@ struct ShortcutStorageTests {
         #expect(Set(shortcutIdentifiers).count == ShortcutAction.allCases.count)
     }
 
+    @Test("Navigation modifier matching is exact")
+    func navigationModifierMatchingIsExact() {
+        #expect(KeyboardShortcutMatcher.navigationModifiersExactlyMatch(
+            [.control, .option],
+            overrides: [:]
+        ))
+        #expect(!KeyboardShortcutMatcher.navigationModifiersExactlyMatch(
+            [.control, .option, .shift],
+            overrides: [:]
+        ))
+        #expect(!KeyboardShortcutMatcher.navigationModifiersExactlyMatch(
+            [.control],
+            overrides: [:]
+        ))
+    }
+
+    @Test("Only configured navigation modifiers reveal the bar")
+    func onlyNavigationModifiersRevealBar() {
+        let overrides: [ShortcutAction: KeyboardShortcut] = [
+            .previousWindow: KeyboardShortcut(keyCode: 0, modifiers: [.command, .shift]),
+            .nextWindow: KeyboardShortcut(keyCode: 1, modifiers: [.command, .option]),
+        ]
+
+        #expect(KeyboardShortcutMatcher.navigationModifiersExactlyMatch(
+            [.command, .shift],
+            overrides: overrides
+        ))
+        #expect(KeyboardShortcutMatcher.navigationModifiersExactlyMatch(
+            [.command, .option],
+            overrides: overrides
+        ))
+        #expect(!KeyboardShortcutMatcher.navigationModifiersExactlyMatch(
+            [.control, .option],
+            overrides: overrides
+        ))
+    }
+
     @Test("Reset restores defaults")
     @MainActor
     func resetToDefaults() {
