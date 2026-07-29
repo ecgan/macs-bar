@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 class MacsBarHostingView: NSHostingView<AnyView> {
     var state: SpaceBarState?
@@ -13,29 +13,25 @@ class MacsBarHostingView: NSHostingView<AnyView> {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        let localPoint = self.convert(point, from: self.superview)
-        
-        guard let state = state else {
-            return super.hitTest(point)
+        guard let state else { return nil }
+
+        let interactiveFrame: CGRect?
+        switch state.presentation {
+        case .hidden:
+            interactiveFrame = nil
+        case .expanded:
+            interactiveFrame = BarMetrics.expandedPillFrame(
+                in: bounds,
+                pillWidth: state.pillWidth
+            )
+        case .collapsed:
+            interactiveFrame = BarMetrics.revealHandleHitFrame(
+                in: bounds,
+                isFlipped: isFlipped
+            )
         }
-        
-        let pillWidth = state.pillWidth
-        guard pillWidth > 0 else {
-            return super.hitTest(point)
-        }
-        
-        let startX = (self.bounds.width - pillWidth) / 2
-        let endX = startX + pillWidth
-        
-        let pillHeight: CGFloat = 32
-        let startY = (self.bounds.height - pillHeight) / 2
-        let endY = startY + pillHeight
-        
-        if localPoint.x >= startX && localPoint.x <= endX &&
-           localPoint.y >= startY && localPoint.y <= endY {
-            return super.hitTest(point)
-        }
-        
-        return nil
+
+        guard let interactiveFrame, interactiveFrame.contains(point) else { return nil }
+        return super.hitTest(point)
     }
 }

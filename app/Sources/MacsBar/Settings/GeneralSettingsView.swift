@@ -4,6 +4,7 @@ import Sparkle
 
 struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
+    @AppStorage(BarVisibilityMode.defaultsKey) private var barVisibilityMode = BarVisibilityMode.overlapAware.rawValue
     @EnvironmentObject private var updaterService: UpdaterService
 
     private var automaticallyChecksForUpdates: Binding<Bool> {
@@ -15,6 +16,12 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
+            Picker("Bar visibility", selection: $barVisibilityMode) {
+                ForEach(BarVisibilityMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode.rawValue)
+                }
+            }
+
             Toggle(isOn: $launchAtLogin) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")

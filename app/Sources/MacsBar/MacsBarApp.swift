@@ -83,10 +83,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterService = UpdaterService()
     let permissionManager = AccessibilityPermissionManager()
     private var permissionCancellable: AnyCancellable?
+    private var visibilityModeCancellable: AnyCancellable?
     private var isTrackerStarted = false
     private var activeSpaceId: Int = 0
-
-    private let barHeight: CGFloat = 36
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
@@ -184,6 +183,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
+
+        visibilityModeCancellable = NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] _ in
+            Task { @MainActor in
+                self?.applyCurrentVisibilityMode()
+            }
+        }
     }
 
     @MainActor
@@ -245,7 +255,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 windowTracker?.closeWindow(window)
             }
         )
-        state.windows = initialWindows
+        state.updateContext(
+            windows: initialWindows,
+            screenFrame: screen.quartzFrame,
+            focusedWindowFrame: focusedApplicationWindowFrame(),
+            visibilityMode: BarVisibilityMode.current(),
+            isFullscreenSuppressed: false
+        )
 
         let panel = NSPanel(
             contentRect: .zero,
@@ -291,7 +307,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             x: screen.frame.origin.x,
             y: screen.frame.origin.y,
             width: screen.frame.width,
-            height: barHeight
+            height: BarMetrics.panelHeight
         )
         panel.setFrame(barFrame, display: false)
         // Use floating level (3) instead of statusBar (25) so fullscreen windows cover us
@@ -316,13 +332,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Update or create the panel (skip creation if fullscreen detected)
-        let isNewPanel = shouldHideForFullscreen ? false : ensurePanel(forSpace: spaceId, initialWindows: windows, screen: screen)
-        if !isNewPanel {
-            spaceStates[spaceId]?.windows = windows
+        if !shouldHideForFullscreen {
+            _ = ensurePanel(forSpace: spaceId, initialWindows: windows, screen: screen)
         }
 
-        // Update final panel visibility (may show panel if fullscreen ended)
-        updatePanelVisibility(for: spaceId, windows: windows, screen: screen)
+        spaceStates[spaceId]?.updateContext(
+            windows: windows,
+            screenFrame: screen.quartzFrame,
+            focusedWindowFrame: focusedApplicationWindowFrame(),
+            visibilityMode: BarVisibilityMode.current(),
+            isFullscreenSuppressed: shouldHideForFullscreen
+        )
+
+        // Update final panel visibility (may show panel if fullscreen ended).
+        panels[spaceId]?.alphaValue = shouldHideForFullscreen ? 0 : 1
     }
 
     // MARK: - Cleanup
@@ -368,7 +391,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 for: window.frame,
                 monitorFrame: monitor.frame,
                 visibleFrame: monitor.visibleFrame,
-                barHeight: barHeight
+                barHeight: BarMetrics.panelHeight
             ) else {
                 continue
             }
@@ -403,12 +426,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// Hide panel when fullscreen is detected.
-    private func updatePanelVisibility(for spaceId: Int, windows: [TrackedWindow], screen: NSScreen) {
-        guard let panel = panels[spaceId] else { return }
+    private func focusedApplicationWindowFrame() -> CGRect? {
+        guard let focusedWindow = windowTracker?.focusedWindow else { return nil }
+        guard focusedWindow.appBundleId != Bundle.main.bundleIdentifier else { return nil }
+        return focusedWindow.frame
+    }
 
-        let shouldHide = shouldHidePanelForFullscreen(spaceId: spaceId, windows: windows, screen: screen)
-        panel.alphaValue = shouldHide ? 0 : 1
+    private func applyCurrentVisibilityMode() {
+        let mode = BarVisibilityMode.current()
+        for state in spaceStates.values {
+            state.setVisibilityMode(mode)
+        }
     }
 
     /// Check if a window is fullscreen (app-controlled fullscreen covering the entire screen including menu bar).

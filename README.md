@@ -13,7 +13,7 @@ Macs Bar displays a compact taskbar panel showing all windows in your current Sp
 - **Multi-display support** with separate panels per display when "Displays have separate Spaces" is turned on in macOS settings
 - **Keyboard shortcuts** to navigate windows
 - **Fullscreen-aware** - panels hide automatically in fullscreen apps
-- **Smart window resizing** - maximized windows adjust to avoid panel overlap
+- **Overlap-aware auto-hide** - the bar collapses when it would cover the focused window
 
 ## Installation
 

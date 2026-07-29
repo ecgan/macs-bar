@@ -17,43 +17,80 @@ struct MacsBarContentView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            Spacer(minLength: 0)
-
-            HStack(spacing: 0) {
-                ForEach(state.windows) { window in
-                    MacsBarItem(window: window, state: state)
+        ZStack {
+            expandedPill
+                .opacity(state.presentation == .expanded ? 1 : 0)
+                .scaleEffect(
+                    x: state.presentation == .expanded ? 1 : 0.96,
+                    y: state.presentation == .expanded ? 1 : 0.82,
+                    anchor: .bottom
+                )
+                .allowsHitTesting(state.presentation == .expanded)
+                .onHover { isHovering in
+                    state.setHovering(isHovering, target: .pill)
                 }
-            }
-            .padding(.horizontal, 4)
-            .frame(minWidth: 32)
-            .frame(height: 32)
-            .background(.regularMaterial)
-            .clipShape(pillShape)
-            .overlay(
-                pillShape
-                    .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
-            )
-            .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 2)
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .preference(key: PillWidthPreferenceKey.self, value: geo.size.width)
-                }
-            )
-            .contextMenu {
-                AppContextMenu()
-            }
-            .opacity(state.windows.isEmpty ? 0 : 1)
-            .animation(.easeInOut(duration: 0.2), value: state.windows.isEmpty)
 
-            Spacer(minLength: 0)
+            revealHandle
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .opacity(state.presentation == .collapsed ? 1 : 0)
+                .allowsHitTesting(state.presentation == .collapsed)
+                .onHover { isHovering in
+                    state.setHovering(isHovering, target: .revealHandle)
+                }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
+        .animation(.easeInOut(duration: 0.16), value: state.presentation)
         .onPreferenceChange(PillWidthPreferenceKey.self) { width in
-            state.pillWidth = width
+            state.updatePillWidth(width)
         }
+    }
+
+    private var expandedPill: some View {
+        HStack(spacing: 0) {
+            ForEach(state.windows) { window in
+                MacsBarItem(window: window, state: state)
+            }
+        }
+        .padding(.horizontal, 4)
+        .frame(minWidth: 32)
+        .frame(height: BarMetrics.pillHeight)
+        .background(.regularMaterial)
+        .clipShape(pillShape)
+        .overlay(
+            pillShape
+                .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+        )
+        .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 2)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .preference(key: PillWidthPreferenceKey.self, value: geo.size.width)
+            }
+        )
+        .contextMenu {
+            AppContextMenu()
+        }
+    }
+
+    private var revealHandle: some View {
+        Color.clear
+            .frame(
+                width: BarMetrics.revealHandleHitWidth,
+                height: BarMetrics.revealHandleHitHeight
+            )
+            .overlay(alignment: .bottom) {
+                Capsule()
+                    .fill(Color.primary.opacity(colorScheme == .dark ? 0.65 : 0.45))
+                    .frame(
+                        width: BarMetrics.revealHandleWidth,
+                        height: BarMetrics.revealHandleHeight
+                    )
+                    .padding(.bottom, 1)
+                    .shadow(color: Color.black.opacity(0.18), radius: 2, y: 1)
+            }
+            .contentShape(Rectangle())
+            .accessibilityLabel("Show Macs Bar")
     }
 }
 
