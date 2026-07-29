@@ -5,11 +5,13 @@ import Carbon.HIToolbox
 enum ShortcutAction: String, CaseIterable {
     case previousWindow
     case nextWindow
+    case toggleAutoHide
 
     var displayName: String {
         switch self {
         case .previousWindow: return "Switch to Previous Window"
         case .nextWindow: return "Switch to Next Window"
+        case .toggleAutoHide: return "Toggle Auto-Hide"
         }
     }
 
@@ -17,6 +19,7 @@ enum ShortcutAction: String, CaseIterable {
         switch self {
         case .previousWindow: return kVK_LeftArrow  // 123
         case .nextWindow: return kVK_RightArrow     // 124
+        case .toggleAutoHide: return kVK_ANSI_H
         }
     }
 

@@ -7,6 +7,7 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
     @MainActor weak var tracker: WindowTracker?
     @MainActor var currentSpaceState: SpaceBarState?
     @MainActor var shortcutStorage: ShortcutStorage?
+    @MainActor var onToggleAutoHide: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -128,10 +129,19 @@ final class KeyboardShortcutHandler: @unchecked Sendable {
             CGEvent.tapEnable(tap: tap, enable: true)
         }
 
-        let offset: Int = (action == .previousWindow) ? -1 : 1
-
-        Task { @MainActor [weak self] in
-            await self?.activateAdjacentWindow(offset: offset)
+        switch action {
+        case .previousWindow:
+            Task { @MainActor [weak self] in
+                await self?.activateAdjacentWindow(offset: -1)
+            }
+        case .nextWindow:
+            Task { @MainActor [weak self] in
+                await self?.activateAdjacentWindow(offset: 1)
+            }
+        case .toggleAutoHide:
+            Task { @MainActor [weak self] in
+                self?.onToggleAutoHide?()
+            }
         }
 
         return nil

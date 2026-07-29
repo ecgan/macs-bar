@@ -114,6 +114,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let tracker = WindowTracker()
         self.windowTracker = tracker
+        keyboardShortcutHandler.onToggleAutoHide = { [weak self] in
+            self?.toggleAutoHide()
+        }
 
         // Hide Settings window during activation to prevent flash when NSApp.activate() is called
         // (but only if we're not activating the Settings window itself)
@@ -506,6 +509,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Auto Hide
+
+    private func toggleAutoHide() {
+        UserDefaults.standard.set(
+            !autoHideEnabled,
+            forKey: AppSettings.autoHideEnabledKey
+        )
+        refreshAutoHideSettings()
+    }
 
     private func refreshAutoHideSettings() {
         let defaults = UserDefaults.standard

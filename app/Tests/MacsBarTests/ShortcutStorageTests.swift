@@ -4,7 +4,7 @@ import Foundation
 
 @Suite("Shortcut Storage Tests")
 struct ShortcutStorageTests {
-    @Test("Default shortcuts are Ctrl+Alt+Arrow keys")
+    @Test("Default shortcuts include window navigation and auto-hide toggle")
     @MainActor
     func defaultShortcuts() {
         let defaults = UserDefaults(suiteName: "test-defaults-\(UUID())")!
@@ -19,6 +19,11 @@ struct ShortcutStorageTests {
         #expect(nextShortcut.keyCode == 124) // Right arrow
         #expect(nextShortcut.modifiers.contains(.control))
         #expect(nextShortcut.modifiers.contains(.option))
+
+        let toggleAutoHideShortcut = storage.shortcut(for: .toggleAutoHide)
+        #expect(toggleAutoHideShortcut.keyCode == 4) // H
+        #expect(toggleAutoHideShortcut.modifiers.contains(.control))
+        #expect(toggleAutoHideShortcut.modifiers.contains(.option))
     }
 
     @Test("Can save and load custom shortcuts")
@@ -28,12 +33,25 @@ struct ShortcutStorageTests {
         let storage = ShortcutStorage(defaults: defaults)
 
         let customShortcut = KeyboardShortcut(keyCode: 0, modifiers: [.command, .shift]) // Cmd+Shift+A
-        storage.setShortcut(customShortcut, for: .previousWindow)
+        storage.setShortcut(customShortcut, for: .toggleAutoHide)
 
-        let loaded = storage.shortcut(for: .previousWindow)
+        let loaded = storage.shortcut(for: .toggleAutoHide)
         #expect(loaded.keyCode == 0)
         #expect(loaded.modifiers.contains(.command))
         #expect(loaded.modifiers.contains(.shift))
+    }
+
+    @Test("Default shortcuts do not conflict")
+    @MainActor
+    func defaultShortcutsDoNotConflict() {
+        let defaults = UserDefaults(suiteName: "test-defaults-\(UUID())")!
+        let storage = ShortcutStorage(defaults: defaults)
+        let shortcutIdentifiers = ShortcutAction.allCases.map { action in
+            let shortcut = storage.shortcut(for: action)
+            return "\(shortcut.keyCode)-\(shortcut.modifiers.rawValue)"
+        }
+
+        #expect(Set(shortcutIdentifiers).count == ShortcutAction.allCases.count)
     }
 
     @Test("Reset restores defaults")
