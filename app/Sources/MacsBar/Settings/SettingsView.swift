@@ -8,6 +8,11 @@ struct SettingsView: View {
                     Label("General", systemImage: "gear")
                 }
 
+            ShowHideSettingsView()
+                .tabItem {
+                    Label("Show / Hide", systemImage: "eye")
+                }
+
             ShortcutsSettingsView()
                 .tabItem {
                     Label("Shortcuts", systemImage: "keyboard")

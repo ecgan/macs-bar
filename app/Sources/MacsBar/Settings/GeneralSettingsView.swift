@@ -4,9 +4,6 @@ import Sparkle
 
 struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
-    @AppStorage(AppSettings.autoHideEnabledKey) private var autoHideEnabled = false
-    @AppStorage(AppSettings.autoHideActivationHeightKey)
-    private var autoHideActivationHeight = AppSettings.defaultAutoHideActivationHeight
     @EnvironmentObject private var updaterService: UpdaterService
 
     private var automaticallyChecksForUpdates: Binding<Bool> {
@@ -17,38 +14,7 @@ struct GeneralSettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Toggle(isOn: $autoHideEnabled) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Automatically hide and show Macs Bar")
-                    Text("Reveal Macs Bar when the pointer reaches the bottom edge of the screen")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            if autoHideEnabled {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Activation area")
-                        Spacer()
-                        Text("\(Int(autoHideActivationHeight)) pt")
-                            .foregroundColor(.secondary)
-                            .monospacedDigit()
-                    }
-
-                    Slider(
-                        value: $autoHideActivationHeight,
-                        in: AppSettings.autoHideActivationHeightRange,
-                        step: 1
-                    )
-
-                    Text("Distance from the bottom edge that reveals Macs Bar")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
+        VStack(alignment: .leading, spacing: 14) {
             Toggle(isOn: $launchAtLogin) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")
