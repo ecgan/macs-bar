@@ -3,9 +3,9 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         TabView {
-            GeneralSettingsView()
+            ShortcutsSettingsView()
                 .tabItem {
-                    Label("General", systemImage: "gear")
+                    Label("Shortcuts", systemImage: "keyboard")
                 }
 
             ShowHideSettingsView()
@@ -13,9 +13,9 @@ struct SettingsView: View {
                     Label("Show / Hide", systemImage: "eye")
                 }
 
-            ShortcutsSettingsView()
+            GeneralSettingsView()
                 .tabItem {
-                    Label("Shortcuts", systemImage: "keyboard")
+                    Label("General", systemImage: "gear")
                 }
 
             AboutView()
