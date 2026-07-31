@@ -14,7 +14,7 @@ struct GeneralSettingsView: View {
     }
 
     var body: some View {
-        Form {
+        VStack(alignment: .leading, spacing: 14) {
             Toggle(isOn: $launchAtLogin) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")

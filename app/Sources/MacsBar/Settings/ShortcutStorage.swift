@@ -5,11 +5,13 @@ import Carbon.HIToolbox
 enum ShortcutAction: String, CaseIterable {
     case previousWindow
     case nextWindow
+    case toggleAutoHide
 
     var displayName: String {
         switch self {
         case .previousWindow: return "Switch to Previous Window"
         case .nextWindow: return "Switch to Next Window"
+        case .toggleAutoHide: return "Toggle Auto-Hide"
         }
     }
 
@@ -17,6 +19,7 @@ enum ShortcutAction: String, CaseIterable {
         switch self {
         case .previousWindow: return kVK_LeftArrow  // 123
         case .nextWindow: return kVK_RightArrow     // 124
+        case .toggleAutoHide: return kVK_ANSI_H
         }
     }
 
@@ -50,6 +53,32 @@ struct KeyboardShortcut: Codable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(keyCode, forKey: .keyCode)
         try container.encode(modifiers.rawValue, forKey: .modifierRawValue)
+    }
+}
+
+enum KeyboardShortcutMatcher {
+    private static let navigationActions: [ShortcutAction] = [
+        .previousWindow,
+        .nextWindow,
+    ]
+
+    static func resolvedShortcut(
+        for action: ShortcutAction,
+        overrides: [ShortcutAction: KeyboardShortcut]
+    ) -> KeyboardShortcut {
+        overrides[action] ?? KeyboardShortcut(
+            keyCode: action.defaultKeyCode,
+            modifiers: action.defaultModifiers
+        )
+    }
+
+    static func navigationModifiersExactlyMatch(
+        _ modifiers: NSEvent.ModifierFlags,
+        overrides: [ShortcutAction: KeyboardShortcut]
+    ) -> Bool {
+        navigationActions.contains { action in
+            resolvedShortcut(for: action, overrides: overrides).modifiers == modifiers
+        }
     }
 }
 

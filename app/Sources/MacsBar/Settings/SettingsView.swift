@@ -3,14 +3,19 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label("General", systemImage: "gear")
-                }
-
             ShortcutsSettingsView()
                 .tabItem {
                     Label("Shortcuts", systemImage: "keyboard")
+                }
+
+            ShowHideSettingsView()
+                .tabItem {
+                    Label("Show / Hide", systemImage: "eye")
+                }
+
+            GeneralSettingsView()
+                .tabItem {
+                    Label("General", systemImage: "gear")
                 }
 
             AboutView()
@@ -18,6 +23,6 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 450, height: 250)
+        .frame(width: 450, height: 340)
     }
 }

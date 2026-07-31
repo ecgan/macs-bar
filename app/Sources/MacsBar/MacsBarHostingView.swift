@@ -13,8 +13,6 @@ class MacsBarHostingView: NSHostingView<AnyView> {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        let localPoint = self.convert(point, from: self.superview)
-        
         guard let state = state else {
             return super.hitTest(point)
         }
@@ -31,8 +29,8 @@ class MacsBarHostingView: NSHostingView<AnyView> {
         let startY = (self.bounds.height - pillHeight) / 2
         let endY = startY + pillHeight
         
-        if localPoint.x >= startX && localPoint.x <= endX &&
-           localPoint.y >= startY && localPoint.y <= endY {
+        if point.x >= startX && point.x <= endX &&
+           point.y >= startY && point.y <= endY {
             return super.hitTest(point)
         }
         
