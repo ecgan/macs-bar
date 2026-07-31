@@ -26,6 +26,25 @@ enum AutoHidePolicy {
 }
 
 @MainActor
+final class MacsBarPanel: NSPanel {
+    var onContextMenuTrackingChanged: ((Bool) -> Void)?
+
+    override func sendEvent(_ event: NSEvent) {
+        let isContextMenuGesture = event.type == .rightMouseDown
+            || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+
+        guard isContextMenuGesture else {
+            super.sendEvent(event)
+            return
+        }
+
+        onContextMenuTrackingChanged?(true)
+        defer { onContextMenuTrackingChanged?(false) }
+        super.sendEvent(event)
+    }
+}
+
+@MainActor
 final class MacsBarPanelContentView: NSView {
     private let hostingView: MacsBarHostingView
     private(set) var isBarShown = true

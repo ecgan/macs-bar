@@ -105,6 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingAutoHideTransitions: [Int: DispatchWorkItem] = [:]
     private var pendingAutoHideTargets: [Int: Bool] = [:]
     private var fullscreenHiddenSpaces: Set<Int> = []
+    private var contextMenuTrackingSpaces: Set<Int> = []
     private var navigationModifiersHeld = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -262,6 +263,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panelScreenFrames.removeAll()
         autoHideShownStates.removeAll()
         fullscreenHiddenSpaces.removeAll()
+        contextMenuTrackingSpaces.removeAll()
 
         isTrackerStarted = false
     }
@@ -287,12 +289,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         state.windows = initialWindows
 
-        let panel = NSPanel(
+        let panel = MacsBarPanel(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
+        panel.onContextMenuTrackingChanged = { [weak self] isTracking in
+            self?.contextMenuTrackingDidChange(isTracking, for: spaceId)
+        }
         configurePanelStyle(panel, screen: screen)
 
         let contentView = MacsBarContentView(state: state)
@@ -395,6 +400,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             panelScreenFrames.removeValue(forKey: spaceId)
             autoHideShownStates.removeValue(forKey: spaceId)
             fullscreenHiddenSpaces.remove(spaceId)
+            contextMenuTrackingSpaces.remove(spaceId)
         }
     }
 
@@ -410,6 +416,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panelScreenFrames.removeAll()
         autoHideShownStates.removeAll()
         fullscreenHiddenSpaces.removeAll()
+        contextMenuTrackingSpaces.removeAll()
 
         Task { await windowTracker?.refresh() }
     }
@@ -514,6 +521,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Auto Hide
 
+    private func contextMenuTrackingDidChange(_ isTracking: Bool, for spaceId: Int) {
+        if isTracking {
+            contextMenuTrackingSpaces.insert(spaceId)
+            cancelPendingAutoHideTransition(for: spaceId)
+        } else {
+            contextMenuTrackingSpaces.remove(spaceId)
+            updateAutoHideForMouseLocation()
+        }
+    }
+
     private func toggleAutoHide() {
         UserDefaults.standard.set(
             !autoHideEnabled,
@@ -600,6 +617,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let mouseLocation = NSEvent.mouseLocation
 
         for spaceId in panels.keys {
+            guard !contextMenuTrackingSpaces.contains(spaceId) else {
+                cancelPendingAutoHideTransition(for: spaceId)
+                continue
+            }
+
             guard !fullscreenHiddenSpaces.contains(spaceId),
                   let screenFrame = panelScreenFrames[spaceId] else {
                 cancelPendingAutoHideTransition(for: spaceId)
@@ -642,7 +664,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.pendingAutoHideTargets.removeValue(forKey: spaceId)
 
             guard self.autoHideEnabled,
-                  !self.fullscreenHiddenSpaces.contains(spaceId) else { return }
+                  !self.fullscreenHiddenSpaces.contains(spaceId),
+                  !self.contextMenuTrackingSpaces.contains(spaceId) else {
+                return
+            }
             self.setAutoHideShown(shown, for: spaceId, animated: true)
         }
 
