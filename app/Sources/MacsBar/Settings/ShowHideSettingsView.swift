@@ -6,6 +6,8 @@ struct ShowHideSettingsView: View {
     private var autoHideActivationHeight = AppSettings.defaultAutoHideActivationHeight
     @AppStorage(AppSettings.showInFrontOfDockKey)
     private var showInFrontOfDock = AppSettings.defaultShowInFrontOfDock
+    @AppStorage(AppSettings.barPlacementAreaKey)
+    private var barPlacementArea = AppSettings.defaultBarPlacementArea.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -43,6 +45,23 @@ struct ShowHideSettingsView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 6) {
+                Text("Place Macs Bar within")
+
+                Picker("Place Macs Bar within", selection: $barPlacementArea) {
+                    Text("Visible frame").tag(BarPlacementArea.visibleFrame.rawValue)
+                    Text("Screen frame").tag(BarPlacementArea.screenFrame.rawValue)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+
+                Text("Visible frame keeps Macs Bar outside the area occupied by the Dock.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
                 Text("When overlapping the Dock")
 
                 Picker("When overlapping the Dock", selection: $showInFrontOfDock) {
@@ -52,7 +71,7 @@ struct ShowHideSettingsView: View {
                 .labelsHidden()
                 .pickerStyle(.segmented)
 
-                Text("Choose whether Macs Bar or the Dock appears on top.")
+                Text("Choose whether Macs Bar or magnified Dock icons appear on top.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

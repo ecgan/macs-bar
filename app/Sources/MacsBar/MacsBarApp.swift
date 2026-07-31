@@ -100,8 +100,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return CGFloat(clampedValue)
     }()
     private var showInFrontOfDock = AppSettings.showInFrontOfDock()
+    private var barPlacementArea = AppSettings.barPlacementArea()
     private var autoHideTimer: Timer?
-    private var panelScreenFrames: [Int: NSRect] = [:]
+    private var panelScreenGeometries: [Int: PanelScreenGeometry] = [:]
     private var autoHideShownStates: [Int: Bool] = [:]
     private var pendingAutoHideTransitions: [Int: DispatchWorkItem] = [:]
     private var pendingAutoHideTargets: [Int: Bool] = [:]
@@ -261,7 +262,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         panels.removeAll()
         spaceStates.removeAll()
-        panelScreenFrames.removeAll()
+        panelScreenGeometries.removeAll()
         autoHideShownStates.removeAll()
         fullscreenHiddenSpaces.removeAll()
         contextMenuTrackingSpaces.removeAll()
@@ -313,7 +314,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panelContentView.autoresizingMask = [.width, .height]
         panel.contentView = panelContentView
 
-        panelScreenFrames[spaceId] = screen.frame
+        panelScreenGeometries[spaceId] = PanelScreenGeometry(
+            screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame
+        )
         autoHideShownStates[spaceId] = !autoHideEnabled
         panelContentView.setBarShown(!autoHideEnabled, animated: false)
 
@@ -342,11 +346,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configurePanelStyle(_ panel: NSPanel, screen: NSScreen) {
-        let barFrame = NSRect(
-            x: screen.frame.origin.x,
-            y: screen.frame.origin.y,
-            width: screen.frame.width,
-            height: barHeight
+        let geometry = PanelScreenGeometry(
+            screenFrame: screen.frame,
+            visibleFrame: screen.visibleFrame
+        )
+        let barFrame = PanelPlacementPolicy.barFrame(
+            for: geometry,
+            area: barPlacementArea,
+            barHeight: barHeight
         )
         panel.setFrame(barFrame, display: false)
         panel.level = PanelLevelPolicy.windowLevel(showInFrontOfDock: showInFrontOfDock)
@@ -397,7 +404,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             panels[spaceId]?.orderOut(nil)
             panels.removeValue(forKey: spaceId)
             spaceStates.removeValue(forKey: spaceId)
-            panelScreenFrames.removeValue(forKey: spaceId)
+            panelScreenGeometries.removeValue(forKey: spaceId)
             autoHideShownStates.removeValue(forKey: spaceId)
             fullscreenHiddenSpaces.remove(spaceId)
             contextMenuTrackingSpaces.remove(spaceId)
@@ -413,7 +420,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         cancelAllPendingAutoHideTransitions()
         panels.removeAll()
         spaceStates.removeAll()
-        panelScreenFrames.removeAll()
+        panelScreenGeometries.removeAll()
         autoHideShownStates.removeAll()
         fullscreenHiddenSpaces.removeAll()
         contextMenuTrackingSpaces.removeAll()
@@ -524,6 +531,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshSettings() {
         refreshAutoHideSettings()
         refreshPanelLevelSetting()
+        refreshPanelPlacementSetting()
     }
 
     private func refreshPanelLevelSetting() {
@@ -534,6 +542,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let level = PanelLevelPolicy.windowLevel(showInFrontOfDock: newValue)
         for panel in panels.values {
             panel.level = level
+        }
+    }
+
+    private func refreshPanelPlacementSetting() {
+        let newValue = AppSettings.barPlacementArea()
+        guard newValue != barPlacementArea else { return }
+
+        barPlacementArea = newValue
+        for (spaceId, panel) in panels {
+            guard let geometry = panelScreenGeometries[spaceId] else { continue }
+            let frame = PanelPlacementPolicy.barFrame(
+                for: geometry,
+                area: newValue,
+                barHeight: barHeight
+            )
+            panel.setFrame(frame, display: true)
+        }
+
+        if autoHideEnabled {
+            updateAutoHideForMouseLocation()
         }
     }
 
@@ -641,15 +669,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             guard !fullscreenHiddenSpaces.contains(spaceId),
-                  let screenFrame = panelScreenFrames[spaceId] else {
+                  let geometry = panelScreenGeometries[spaceId] else {
                 cancelPendingAutoHideTransition(for: spaceId)
                 continue
             }
 
+            let activationFrame = PanelPlacementPolicy.placementFrame(
+                for: geometry,
+                area: barPlacementArea
+            )
             let isShown = autoHideShownStates[spaceId] ?? false
             let mouseRequestsReveal = AutoHidePolicy.shouldShowBar(
                 mouseLocation: mouseLocation,
-                screenFrame: screenFrame,
+                screenFrame: activationFrame,
                 barHeight: barHeight,
                 activationHeight: autoHideActivationHeight,
                 isBarShown: isShown
