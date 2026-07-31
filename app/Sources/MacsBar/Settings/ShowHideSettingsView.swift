@@ -4,6 +4,8 @@ struct ShowHideSettingsView: View {
     @AppStorage(AppSettings.autoHideEnabledKey) private var autoHideEnabled = false
     @AppStorage(AppSettings.autoHideActivationHeightKey)
     private var autoHideActivationHeight = AppSettings.defaultAutoHideActivationHeight
+    @AppStorage(AppSettings.showInFrontOfDockKey)
+    private var showInFrontOfDock = AppSettings.defaultShowInFrontOfDock
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -37,6 +39,23 @@ struct ShowHideSettingsView: View {
             }
             .disabled(!autoHideEnabled)
             .padding(.leading, 22)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("When overlapping the Dock")
+
+                Picker("When overlapping the Dock", selection: $showInFrontOfDock) {
+                    Text("Behind Dock").tag(false)
+                    Text("In front of Dock").tag(true)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+
+                Text("Choose whether Macs Bar or the Dock appears on top.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Spacer()
         }

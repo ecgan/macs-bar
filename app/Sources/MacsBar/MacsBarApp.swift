@@ -99,6 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         return CGFloat(clampedValue)
     }()
+    private var showInFrontOfDock = AppSettings.showInFrontOfDock()
     private var autoHideTimer: Timer?
     private var panelScreenFrames: [Int: NSRect] = [:]
     private var autoHideShownStates: [Int: Bool] = [:]
@@ -204,7 +205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .publisher(for: UserDefaults.didChangeNotification, object: UserDefaults.standard)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.refreshAutoHideSettings()
+                self?.refreshSettings()
             }
 
         if !permissionManager.isPermissionGranted {
@@ -348,8 +349,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             height: barHeight
         )
         panel.setFrame(barFrame, display: false)
-        // Use floating level (3) instead of statusBar (25) so fullscreen windows cover us
-        panel.level = .floating
+        panel.level = PanelLevelPolicy.windowLevel(showInFrontOfDock: showInFrontOfDock)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
@@ -517,6 +517,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func screenDidChange() {
         activeSpaceId = MacWindowTracker.currentSpaceId()
         resetAllPanels()
+    }
+
+    // MARK: - Settings
+
+    private func refreshSettings() {
+        refreshAutoHideSettings()
+        refreshPanelLevelSetting()
+    }
+
+    private func refreshPanelLevelSetting() {
+        let newValue = AppSettings.showInFrontOfDock()
+        guard newValue != showInFrontOfDock else { return }
+
+        showInFrontOfDock = newValue
+        let level = PanelLevelPolicy.windowLevel(showInFrontOfDock: newValue)
+        for panel in panels.values {
+            panel.level = level
+        }
     }
 
     // MARK: - Auto Hide
