@@ -59,8 +59,6 @@ struct ShowHideSettingsView: View {
                     .foregroundColor(.secondary)
             }
 
-            Divider()
-
             VStack(alignment: .leading, spacing: 6) {
                 Text("When overlapping the Dock")
 
