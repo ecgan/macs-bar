@@ -54,7 +54,11 @@ struct ShowHideSettingsView: View {
                 .labelsHidden()
                 .pickerStyle(.segmented)
 
-                Text("Visible frame keeps Macs Bar outside the area occupied by the Dock.")
+                Text("Visible frame keeps Macs Bar within the area not covered by the Dock or menu bar.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text("Screen frame keeps Macs Bar within the entire screen area.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -69,7 +73,7 @@ struct ShowHideSettingsView: View {
                 .labelsHidden()
                 .pickerStyle(.segmented)
 
-                Text("Choose whether Macs Bar or magnified Dock icons appear on top.")
+                Text("Choose whether Macs Bar should appear behind or in front of the Dock when overlapping.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
