@@ -55,10 +55,10 @@ struct PanelPlacementPolicyTests {
         #expect(AppSettings.barPlacementArea(defaults: defaults) == .visibleFrame)
 
         defaults.set(
-            BarPlacementArea.visibleFrame.rawValue,
+            BarPlacementArea.screenFrame.rawValue,
             forKey: AppSettings.barPlacementAreaKey
         )
-        #expect(AppSettings.barPlacementArea(defaults: defaults) == .visibleFrame)
+        #expect(AppSettings.barPlacementArea(defaults: defaults) == .screenFrame)
     }
 
     @Test("Invalid placement preference falls back to visible frame")
