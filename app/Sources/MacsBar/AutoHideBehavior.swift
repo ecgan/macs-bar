@@ -53,9 +53,6 @@ final class MacsBarPanelContentView: NSView {
         self.hostingView = hostingView
         super.init(frame: frameRect)
 
-        wantsLayer = true
-        layer?.masksToBounds = true
-
         hostingView.frame = bounds
         hostingView.autoresizingMask = [.width, .height]
         addSubview(hostingView)
@@ -75,16 +72,16 @@ final class MacsBarPanelContentView: NSView {
         guard shown != isBarShown else { return }
         isBarShown = shown
 
-        let targetOrigin = NSPoint(x: 0, y: shown ? 0 : -bounds.height)
+        let targetAlpha: CGFloat = shown ? 1 : 0
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = AutoHidePolicy.animationDuration
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                hostingView.animator().setFrameOrigin(targetOrigin)
+                hostingView.animator().alphaValue = targetAlpha
             }
         } else {
-            hostingView.setFrameOrigin(targetOrigin)
+            hostingView.alphaValue = targetAlpha
         }
     }
 }
