@@ -26,7 +26,7 @@ struct AboutView: View {
 
             // Copyright
             Text(
-                "© \(Calendar.current.component(.year, from: Date())) Gan Eng Chin. All rights reserved."
+                verbatim: "© \(Calendar.current.component(.year, from: Date())) Gan Eng Chin. All rights reserved."
             )
             .font(.caption)
             .foregroundColor(.secondary)
