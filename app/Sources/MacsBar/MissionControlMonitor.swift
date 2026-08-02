@@ -127,7 +127,9 @@ private let missionControlObserverCallback: AXObserverCallback = {
         .takeUnretainedValue()
     let notificationName = notification as String
 
-    Task { @MainActor in
+    // This observer source is installed on the main run loop, so handle the event
+    // immediately instead of adding another main-actor scheduling hop.
+    MainActor.assumeIsolated {
         monitor.handle(notificationName: notificationName)
     }
 }
