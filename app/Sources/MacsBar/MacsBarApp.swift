@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import MacWindowTracker
+import QuartzCore
 
 @main
 struct MacsBarApp: App {
@@ -111,6 +112,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var contextMenuTrackingSpaces: Set<Int> = []
     private var navigationModifiersHeld = false
     private var isShowDesktopActive = false
+    private var isRestoringFromShowDesktop = false
+    private var showDesktopTransitionId = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
@@ -263,6 +266,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardShortcutHandler.stop()
         missionControlMonitor.stop()
         isShowDesktopActive = false
+        isRestoringFromShowDesktop = false
+        showDesktopTransitionId += 1
         stopAutoHideTracking()
 
         for panel in panels.values {
@@ -284,6 +289,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Does not create panels while Show Desktop is active or for fullscreen spaces.
     @discardableResult
     private func ensurePanel(forSpace spaceId: Int, initialWindows: [TrackedWindow], screen: NSScreen) -> Bool {
+        guard !isRestoringFromShowDesktop else { return false }
         let isFullscreenSpace = MacWindowTracker.isFullScreenSpace(spaceId)
         guard PanelVisibilityPolicy.shouldShowPanel(
             isShowDesktopActive: isShowDesktopActive,
@@ -510,12 +516,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else if isShowDesktopActive {
             fullscreenHiddenSpaces.remove(spaceId)
             cancelPendingAutoHideTransition(for: spaceId)
-            panel.orderOut(nil)
         } else {
             fullscreenHiddenSpaces.remove(spaceId)
-            panel.alphaValue = 1
-            if !panel.isVisible {
-                panel.orderFrontRegardless()
+            if !isRestoringFromShowDesktop {
+                panel.alphaValue = 1
+                if !panel.isVisible {
+                    panel.orderFrontRegardless()
+                }
             }
             if !autoHideEnabled {
                 setAutoHideShown(true, for: spaceId, animated: false)
@@ -528,15 +535,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showDesktopDidChange(_ isActive: Bool) {
         guard isActive != isShowDesktopActive else { return }
         isShowDesktopActive = isActive
+        showDesktopTransitionId += 1
+        let transitionId = showDesktopTransitionId
         cancelAllPendingAutoHideTransitions()
 
         if isActive {
-            for panel in panels.values {
-                panel.orderOut(nil)
+            isRestoringFromShowDesktop = false
+            animatePanelAlpha(0, panels: Array(panels.values))
+
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + AutoHidePolicy.animationDuration
+            ) { [weak self] in
+                guard let self,
+                      self.showDesktopTransitionId == transitionId,
+                      self.isShowDesktopActive else {
+                    return
+                }
+                for panel in self.panels.values {
+                    panel.orderOut(nil)
+                }
             }
             return
         }
 
+        isRestoringFromShowDesktop = true
+        var panelsToRestore: [NSPanel] = []
         for (spaceId, panel) in panels {
             guard PanelVisibilityPolicy.shouldShowPanel(
                 isShowDesktopActive: false,
@@ -544,15 +567,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ) else {
                 continue
             }
-            panel.alphaValue = 1
             panel.orderFrontRegardless()
+            panelsToRestore.append(panel)
         }
+        animatePanelAlpha(1, panels: panelsToRestore)
 
-        if autoHideEnabled {
-            updateAutoHideForMouseLocation()
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + AutoHidePolicy.animationDuration
+        ) { [weak self] in
+            guard let self,
+                  self.showDesktopTransitionId == transitionId,
+                  !self.isShowDesktopActive else {
+                return
+            }
+            self.isRestoringFromShowDesktop = false
+            if self.autoHideEnabled {
+                self.updateAutoHideForMouseLocation()
+            }
+            Task {
+                await self.windowTracker?.refresh()
+            }
         }
-        Task {
-            await windowTracker?.refresh()
+    }
+
+    private func animatePanelAlpha(_ alpha: CGFloat, panels: [NSPanel]) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = AutoHidePolicy.animationDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            for panel in panels {
+                panel.animator().alphaValue = alpha
+            }
         }
     }
 
