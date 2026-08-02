@@ -16,6 +16,10 @@ class MacsBarHostingView: NSHostingView<AnyView> {
         guard let state = state else {
             return super.hitTest(point)
         }
+
+        guard !state.windows.isEmpty else {
+            return nil
+        }
         
         let pillWidth = state.pillWidth
         guard pillWidth > 0 else {
