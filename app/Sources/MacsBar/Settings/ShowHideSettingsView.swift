@@ -4,8 +4,8 @@ struct ShowHideSettingsView: View {
     @AppStorage(AppSettings.autoHideEnabledKey) private var autoHideEnabled = false
     @AppStorage(AppSettings.autoHideActivationHeightKey)
     private var autoHideActivationHeight = AppSettings.defaultAutoHideActivationHeight
-    @AppStorage(AppSettings.showInFrontOfDockKey)
-    private var showInFrontOfDock = AppSettings.defaultShowInFrontOfDock
+    @AppStorage(AppSettings.panelLevelKey)
+    private var panelLevel = AppSettings.defaultPanelLevel.rawValue
     @AppStorage(AppSettings.barPlacementAreaKey)
     private var barPlacementArea = AppSettings.defaultBarPlacementArea.rawValue
 
@@ -66,9 +66,9 @@ struct ShowHideSettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("When overlapping the Dock")
 
-                Picker("When overlapping the Dock", selection: $showInFrontOfDock) {
-                    Text("Behind Dock").tag(false)
-                    Text("In front of Dock").tag(true)
+                Picker("When overlapping the Dock", selection: $panelLevel) {
+                    Text("Behind Dock").tag(PanelLevel.behindDock.rawValue)
+                    Text("In front of Dock").tag(PanelLevel.inFrontOfDock.rawValue)
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)

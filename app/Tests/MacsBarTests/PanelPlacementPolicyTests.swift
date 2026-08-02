@@ -48,24 +48,24 @@ struct PanelPlacementPolicyTests {
         #expect(frame == NSRect(x: 80, y: 0, width: 1432, height: 36))
     }
 
-    @Test("Placement defaults to screen frame and respects a saved choice")
+    @Test("Placement defaults to visible frame and respects a saved choice")
     func placementPreference() {
         let defaults = UserDefaults(suiteName: "test-defaults-\(UUID())")!
 
-        #expect(AppSettings.barPlacementArea(defaults: defaults) == .screenFrame)
+        #expect(AppSettings.barPlacementArea(defaults: defaults) == .visibleFrame)
 
         defaults.set(
-            BarPlacementArea.visibleFrame.rawValue,
+            BarPlacementArea.screenFrame.rawValue,
             forKey: AppSettings.barPlacementAreaKey
         )
-        #expect(AppSettings.barPlacementArea(defaults: defaults) == .visibleFrame)
+        #expect(AppSettings.barPlacementArea(defaults: defaults) == .screenFrame)
     }
 
-    @Test("Invalid placement preference falls back to screen frame")
+    @Test("Invalid placement preference falls back to visible frame")
     func invalidPlacementPreference() {
         let defaults = UserDefaults(suiteName: "test-defaults-\(UUID())")!
         defaults.set("invalid", forKey: AppSettings.barPlacementAreaKey)
 
-        #expect(AppSettings.barPlacementArea(defaults: defaults) == .screenFrame)
+        #expect(AppSettings.barPlacementArea(defaults: defaults) == .visibleFrame)
     }
 }

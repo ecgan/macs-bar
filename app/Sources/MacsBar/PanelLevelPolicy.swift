@@ -1,11 +1,19 @@
 import AppKit
 import CoreGraphics
 
-enum PanelLevelPolicy {
-    static func windowLevel(showInFrontOfDock: Bool) -> NSWindow.Level {
-        guard showInFrontOfDock else { return .floating }
+enum PanelLevel: String {
+    case behindDock
+    case inFrontOfDock
+}
 
-        let dockLevel = Int(CGWindowLevelForKey(.dockWindow))
-        return NSWindow.Level(rawValue: dockLevel + 1)
+enum PanelLevelPolicy {
+    static func windowLevel(for panelLevel: PanelLevel) -> NSWindow.Level {
+        switch panelLevel {
+        case .behindDock:
+            return .floating
+        case .inFrontOfDock:
+            let dockLevel = Int(CGWindowLevelForKey(.dockWindow))
+            return NSWindow.Level(rawValue: dockLevel + 1)
+        }
     }
 }

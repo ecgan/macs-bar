@@ -99,7 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         return CGFloat(clampedValue)
     }()
-    private var showInFrontOfDock = AppSettings.showInFrontOfDock()
+    private var panelLevel = AppSettings.panelLevel()
     private var barPlacementArea = AppSettings.barPlacementArea()
     private var autoHideTimer: Timer?
     private var panelScreenGeometries: [Int: PanelScreenGeometry] = [:]
@@ -356,7 +356,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             barHeight: barHeight
         )
         panel.setFrame(barFrame, display: false)
-        panel.level = PanelLevelPolicy.windowLevel(showInFrontOfDock: showInFrontOfDock)
+        panel.level = PanelLevelPolicy.windowLevel(for: panelLevel)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
@@ -535,11 +535,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func refreshPanelLevelSetting() {
-        let newValue = AppSettings.showInFrontOfDock()
-        guard newValue != showInFrontOfDock else { return }
+        let newValue = AppSettings.panelLevel()
+        guard newValue != panelLevel else { return }
 
-        showInFrontOfDock = newValue
-        let level = PanelLevelPolicy.windowLevel(showInFrontOfDock: newValue)
+        panelLevel = newValue
+        let level = PanelLevelPolicy.windowLevel(for: newValue)
         for panel in panels.values {
             panel.level = level
         }
