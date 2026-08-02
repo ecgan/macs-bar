@@ -22,16 +22,16 @@ struct PanelLevelPolicyTests {
         #expect(level.rawValue < Int(CGWindowLevelForKey(.mainMenuWindow)))
     }
 
-    @Test("Dock layering defaults to in front and respects a saved choice")
+    @Test("Dock layering defaults to behind and respects a saved choice")
     func dockLayeringPreference() {
         let defaults = UserDefaults(suiteName: "test-defaults-\(UUID())")!
 
-        #expect(AppSettings.showInFrontOfDock(defaults: defaults))
-
-        defaults.set(false, forKey: AppSettings.showInFrontOfDockKey)
         #expect(!AppSettings.showInFrontOfDock(defaults: defaults))
 
         defaults.set(true, forKey: AppSettings.showInFrontOfDockKey)
         #expect(AppSettings.showInFrontOfDock(defaults: defaults))
+
+        defaults.set(false, forKey: AppSettings.showInFrontOfDockKey)
+        #expect(!AppSettings.showInFrontOfDock(defaults: defaults))
     }
 }
