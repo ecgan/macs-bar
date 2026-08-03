@@ -512,17 +512,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if autoHideEnabled {
                 setAutoHideShown(false, for: spaceId, animated: false)
             }
+            panel.ignoresMouseEvents = true
             panel.alphaValue = 0
         } else if isShowDesktopActive {
             fullscreenHiddenSpaces.remove(spaceId)
             cancelPendingAutoHideTransition(for: spaceId)
+            panel.ignoresMouseEvents = true
         } else {
             fullscreenHiddenSpaces.remove(spaceId)
             if !isRestoringFromShowDesktop {
                 panel.alphaValue = 1
-                if !panel.isVisible {
-                    panel.orderFrontRegardless()
-                }
+                panel.ignoresMouseEvents = false
             }
             if !autoHideEnabled {
                 setAutoHideShown(true, for: spaceId, animated: false)
@@ -541,20 +541,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if isActive {
             isRestoringFromShowDesktop = false
-            animatePanelAlpha(0, panels: Array(panels.values))
-
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + AutoHidePolicy.animationDuration
-            ) { [weak self] in
-                guard let self,
-                      self.showDesktopTransitionId == transitionId,
-                      self.isShowDesktopActive else {
-                    return
-                }
-                for panel in self.panels.values {
-                    panel.orderOut(nil)
-                }
+            let panelsToHide = Array(panels.values)
+            for panel in panelsToHide {
+                panel.ignoresMouseEvents = true
             }
+            animatePanelAlpha(0, panels: panelsToHide)
             return
         }
 
@@ -567,7 +558,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ) else {
                 continue
             }
-            panel.orderFrontRegardless()
+            panel.ignoresMouseEvents = false
             panelsToRestore.append(panel)
         }
         animatePanelAlpha(1, panels: panelsToRestore)
