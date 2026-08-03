@@ -7,6 +7,7 @@ enum MissionControlState: String {
 }
 
 private let dockBundleIdentifier = "com.apple.dock"
+private let initialStateRecheckDelay: TimeInterval = 0.4
 
 @MainActor
 final class MissionControlMonitor {
@@ -140,6 +141,20 @@ final class MissionControlMonitor {
             AXObserverGetRunLoopSource(newObserver),
             .commonModes
         )
+
+        reconcileShowDesktopState(for: dock.processIdentifier)
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + initialStateRecheckDelay
+        ) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self,
+                      self.isStarted,
+                      self.dockProcessIdentifier == dock.processIdentifier else {
+                    return
+                }
+                self.reconcileShowDesktopState(for: dock.processIdentifier)
+            }
+        }
     }
 
     private func detachDockObserver() {
@@ -158,6 +173,29 @@ final class MissionControlMonitor {
         self.observer = nil
         self.dockElement = nil
         dockProcessIdentifier = nil
+    }
+
+    private func reconcileShowDesktopState(for dockProcessIdentifier: pid_t) {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            .optionOnScreenOnly,
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return
+        }
+
+        let dockWindowLayers = windowList.compactMap { window -> CGWindowLevel? in
+            guard window[kCGWindowOwnerPID as String] as? pid_t == dockProcessIdentifier
+            else {
+                return nil
+            }
+            return window[kCGWindowLayer as String] as? CGWindowLevel
+        }
+
+        setShowDesktopActive(
+            ShowDesktopInitialStatePolicy.isShowDesktopActive(
+                dockWindowLayers: dockWindowLayers
+            )
+        )
     }
 
     private func dockDidLaunch(_ dock: NSRunningApplication) {
