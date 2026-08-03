@@ -48,6 +48,7 @@ final class MacsBarPanel: NSPanel {
 final class MacsBarPanelContentView: NSView {
     private let hostingView: MacsBarHostingView
     private(set) var isBarShown = true
+    private var isPanelInteractionEnabled = true
 
     init(hostingView: MacsBarHostingView, frame frameRect: NSRect) {
         self.hostingView = hostingView
@@ -63,9 +64,13 @@ final class MacsBarPanelContentView: NSView {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        guard isBarShown else { return nil }
+        guard isBarShown, isPanelInteractionEnabled else { return nil }
         let hostingPoint = hostingView.convert(point, from: self)
         return hostingView.hitTest(hostingPoint)
+    }
+
+    func setPanelInteractionEnabled(_ enabled: Bool) {
+        isPanelInteractionEnabled = enabled
     }
 
     func setBarShown(_ shown: Bool, animated: Bool) {

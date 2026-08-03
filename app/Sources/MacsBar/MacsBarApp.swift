@@ -512,17 +512,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if autoHideEnabled {
                 setAutoHideShown(false, for: spaceId, animated: false)
             }
-            panel.ignoresMouseEvents = true
+            setPanelInteractionEnabled(false, for: panel)
             panel.alphaValue = 0
         } else if isShowDesktopActive {
             fullscreenHiddenSpaces.remove(spaceId)
             cancelPendingAutoHideTransition(for: spaceId)
-            panel.ignoresMouseEvents = true
+            setPanelInteractionEnabled(false, for: panel)
         } else {
             fullscreenHiddenSpaces.remove(spaceId)
             if !isRestoringFromShowDesktop {
                 panel.alphaValue = 1
-                panel.ignoresMouseEvents = false
+                setPanelInteractionEnabled(true, for: panel)
             }
             if !autoHideEnabled {
                 setAutoHideShown(true, for: spaceId, animated: false)
@@ -543,7 +543,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             isRestoringFromShowDesktop = false
             let panelsToHide = Array(panels.values)
             for panel in panelsToHide {
-                panel.ignoresMouseEvents = true
+                setPanelInteractionEnabled(false, for: panel)
             }
             animatePanelAlpha(0, panels: panelsToHide)
             return
@@ -558,7 +558,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ) else {
                 continue
             }
-            panel.ignoresMouseEvents = false
+            setPanelInteractionEnabled(true, for: panel)
             panelsToRestore.append(panel)
         }
         animatePanelAlpha(1, panels: panelsToRestore)
@@ -589,6 +589,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 panel.animator().alphaValue = alpha
             }
         }
+    }
+
+    private func setPanelInteractionEnabled(_ enabled: Bool, for panel: NSPanel) {
+        (panel.contentView as? MacsBarPanelContentView)?
+            .setPanelInteractionEnabled(enabled)
     }
 
     /// Check if a window is fullscreen (app-controlled fullscreen covering the entire screen including menu bar).
