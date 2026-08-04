@@ -5,6 +5,7 @@ import Sparkle
 struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @EnvironmentObject private var updaterService: UpdaterService
+    @EnvironmentObject private var welcomeGuideController: WelcomeGuideController
 
     private var automaticallyChecksForUpdates: Binding<Bool> {
         Binding(
@@ -40,6 +41,21 @@ struct GeneralSettingsView: View {
                 updaterService.checkForUpdates()
             }
             .disabled(!updaterService.canCheckForUpdates)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Welcome Guide")
+                    .font(.headline)
+
+                Text("Review how Macs Bar works and configure its permission, placement, visibility, and keyboard shortcuts.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Button("Show Welcome Guide...") {
+                    welcomeGuideController.show()
+                }
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
