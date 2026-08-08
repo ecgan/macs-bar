@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import MacWindowTracker
+import QuartzCore
 
 @main
 struct MacsBarApp: App {
@@ -86,6 +87,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var spaceStates: [Int: SpaceBarState] = [:]
     var windowTracker: WindowTracker?
     private let keyboardShortcutHandler = KeyboardShortcutHandler()
+    private let missionControlMonitor = MissionControlMonitor()
     let shortcutStorage = ShortcutStorage()
     let updaterService = UpdaterService()
     let permissionManager = AccessibilityPermissionManager()
@@ -120,6 +122,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var fullscreenHiddenSpaces: Set<Int> = []
     private var contextMenuTrackingSpaces: Set<Int> = []
     private var navigationModifiersHeld = false
+    private var isShowDesktopActive = false
+    private var isRestoringFromShowDesktop = false
+    private var showDesktopTransitionId = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // IMPORTANT: This must be called at runtime even though LSUIElement=true in Info.plist.
@@ -134,6 +139,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         keyboardShortcutHandler.onNavigationModifiersChanged = { [weak self] areHeld in
             self?.navigationModifiersDidChange(areHeld)
+        }
+        missionControlMonitor.onShowDesktopChanged = { [weak self] isActive in
+            self?.showDesktopDidChange(isActive)
         }
 
         // Hide auxiliary windows during activation to prevent a flash when NSApp.activate()
@@ -246,6 +254,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try await tracker.start()
             isTrackerStarted = true
+            missionControlMonitor.start()
 
             // Create initial panel for the current space (starts empty, fills on first refresh)
             let initialSpace = MacWindowTracker.currentSpaceId()
@@ -272,6 +281,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         windowTracker?.stop()
         keyboardShortcutHandler.stop()
+        missionControlMonitor.stop()
+        isShowDesktopActive = false
+        isRestoringFromShowDesktop = false
+        showDesktopTransitionId += 1
         stopAutoHideTracking()
 
         for panel in panels.values {
@@ -290,11 +303,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Panel Management
 
     /// Create a panel for a space if one doesn't exist. Returns true if a new panel was created.
-    /// Does not create panels for fullscreen spaces.
+    /// Does not create panels while Show Desktop is active or for fullscreen spaces.
     @discardableResult
     private func ensurePanel(forSpace spaceId: Int, initialWindows: [TrackedWindow], screen: NSScreen) -> Bool {
-        // Don't create panels for fullscreen spaces
-        if MacWindowTracker.isFullScreenSpace(spaceId) { return false }
+        guard !isRestoringFromShowDesktop else { return false }
+        let isFullscreenSpace = MacWindowTracker.isFullScreenSpace(spaceId)
+        guard PanelVisibilityPolicy.shouldShowPanel(
+            isShowDesktopActive: isShowDesktopActive,
+            isFullscreenActive: isFullscreenSpace
+        ) else {
+            return false
+        }
         guard panels[spaceId] == nil else { return false }
 
         let state = SpaceBarState(
@@ -348,11 +367,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             // Don't reveal if we're now on a fullscreen space
             let currentSpace = MacWindowTracker.currentSpaceId()
-            if MacWindowTracker.isFullScreenSpace(currentSpace) || MacWindowTracker.isFullScreenSpace(spaceId) {
-                return
-            }
+            let isFullscreenSpace = MacWindowTracker.isFullScreenSpace(currentSpace)
+                || MacWindowTracker.isFullScreenSpace(spaceId)
             // Don't reveal if fullscreen is detected by other methods
-            if self.shouldHidePanelForFullscreen(spaceId: spaceId, windows: self.spaceStates[spaceId]?.windows ?? [], screen: screen) {
+            let shouldHideForFullscreen = isFullscreenSpace
+                || self.shouldHidePanelForFullscreen(
+                    spaceId: spaceId,
+                    windows: self.spaceStates[spaceId]?.windows ?? [],
+                    screen: screen
+                )
+            guard PanelVisibilityPolicy.shouldShowPanel(
+                isShowDesktopActive: self.isShowDesktopActive,
+                isFullscreenActive: shouldHideForFullscreen
+            ) else {
                 return
             }
             panel.alphaValue = 1
@@ -503,14 +530,88 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if autoHideEnabled {
                 setAutoHideShown(false, for: spaceId, animated: false)
             }
+            setPanelInteractionEnabled(false, for: panel)
             panel.alphaValue = 0
+        } else if isShowDesktopActive {
+            fullscreenHiddenSpaces.remove(spaceId)
+            cancelPendingAutoHideTransition(for: spaceId)
+            setPanelInteractionEnabled(false, for: panel)
         } else {
             fullscreenHiddenSpaces.remove(spaceId)
-            panel.alphaValue = 1
+            if !isRestoringFromShowDesktop {
+                panel.alphaValue = 1
+                setPanelInteractionEnabled(true, for: panel)
+            }
             if !autoHideEnabled {
                 setAutoHideShown(true, for: spaceId, animated: false)
             }
         }
+    }
+
+    // MARK: - Show Desktop
+
+    private func showDesktopDidChange(_ isActive: Bool) {
+        guard isActive != isShowDesktopActive else { return }
+        isShowDesktopActive = isActive
+        showDesktopTransitionId += 1
+        let transitionId = showDesktopTransitionId
+        cancelAllPendingAutoHideTransitions()
+
+        if isActive {
+            isRestoringFromShowDesktop = false
+            let panelsToHide = Array(panels.values)
+            for panel in panelsToHide {
+                setPanelInteractionEnabled(false, for: panel)
+            }
+            animatePanelAlpha(0, panels: panelsToHide)
+            return
+        }
+
+        isRestoringFromShowDesktop = true
+        var panelsToRestore: [NSPanel] = []
+        for (spaceId, panel) in panels {
+            guard PanelVisibilityPolicy.shouldShowPanel(
+                isShowDesktopActive: false,
+                isFullscreenActive: fullscreenHiddenSpaces.contains(spaceId)
+            ) else {
+                continue
+            }
+            setPanelInteractionEnabled(true, for: panel)
+            panelsToRestore.append(panel)
+        }
+        animatePanelAlpha(1, panels: panelsToRestore)
+
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + AutoHidePolicy.animationDuration
+        ) { [weak self] in
+            guard let self,
+                  self.showDesktopTransitionId == transitionId,
+                  !self.isShowDesktopActive else {
+                return
+            }
+            self.isRestoringFromShowDesktop = false
+            if self.autoHideEnabled {
+                self.updateAutoHideForMouseLocation()
+            }
+            Task {
+                await self.windowTracker?.refresh()
+            }
+        }
+    }
+
+    private func animatePanelAlpha(_ alpha: CGFloat, panels: [NSPanel]) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = AutoHidePolicy.animationDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            for panel in panels {
+                panel.animator().alphaValue = alpha
+            }
+        }
+    }
+
+    private func setPanelInteractionEnabled(_ enabled: Bool, for panel: NSPanel) {
+        (panel.contentView as? MacsBarPanelContentView)?
+            .setPanelInteractionEnabled(enabled)
     }
 
     /// Check if a window is fullscreen (app-controlled fullscreen covering the entire screen including menu bar).
@@ -677,7 +778,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateAutoHideForMouseLocation(
         hideImmediatelyWhenInactive: Bool = false
     ) {
-        guard autoHideEnabled else { return }
+        guard autoHideEnabled, !isShowDesktopActive else { return }
         let mouseLocation = NSEvent.mouseLocation
 
         for spaceId in panels.keys {
@@ -732,6 +833,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.pendingAutoHideTargets.removeValue(forKey: spaceId)
 
             guard self.autoHideEnabled,
+                  !self.isShowDesktopActive,
                   !self.fullscreenHiddenSpaces.contains(spaceId),
                   !self.contextMenuTrackingSpaces.contains(spaceId) else {
                 return

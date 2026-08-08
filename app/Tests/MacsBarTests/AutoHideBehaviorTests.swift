@@ -1,4 +1,6 @@
+import AppKit
 import CoreGraphics
+import SwiftUI
 import Testing
 @testable import MacsBar
 
@@ -86,5 +88,19 @@ struct AutoHideBehaviorTests {
             activationHeight: 16,
             isBarShown: false
         ))
+    }
+
+    @MainActor
+    @Test("Disabled panel interaction rejects hits")
+    func disabledPanelInteractionRejectsHits() {
+        let hostingView = MacsBarHostingView(rootView: AnyView(Color.clear))
+        let contentView = MacsBarPanelContentView(
+            hostingView: hostingView,
+            frame: NSRect(x: 0, y: 0, width: 200, height: 36)
+        )
+
+        contentView.setPanelInteractionEnabled(false)
+
+        #expect(contentView.hitTest(NSPoint(x: 100, y: 18)) == nil)
     }
 }
