@@ -121,19 +121,38 @@ struct ShortcutRecorderEventHandler: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         guard let view = nsView as? ShortcutRecorderNSView else { return }
-        if isRecording {
-            view.window?.makeFirstResponder(view)
-        }
+        view.setRecording(isRecording)
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+        guard let view = nsView as? ShortcutRecorderNSView else { return }
+        view.setRecording(false)
     }
 }
 
 class ShortcutRecorderNSView: NSView {
     var onShortcutRecorded: ((Int, NSEvent.ModifierFlags) -> Void)?
     var onCancel: (() -> Void)?
+    private(set) var isRecording = false
 
     override var acceptsFirstResponder: Bool { true }
 
+    func setRecording(_ isRecording: Bool) {
+        self.isRecording = isRecording
+
+        guard let window else { return }
+        if isRecording {
+            if window.firstResponder !== self {
+                window.makeFirstResponder(self)
+            }
+        } else if window.firstResponder === self {
+            window.makeFirstResponder(nil)
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
+        guard isRecording else { return }
+
         if event.keyCode == kVK_Escape {
             onCancel?()
             return

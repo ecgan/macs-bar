@@ -11,6 +11,7 @@ struct MacsBarApp: App {
             AppContextMenu()
                 .environmentObject(appDelegate.updaterService)
                 .environmentObject(appDelegate.permissionManager)
+                .environmentObject(appDelegate.welcomeGuideController)
         } label: {
             Image(nsImage: MenuBarIconImage.taskbarTemplate)
                 .accessibilityLabel("Macs Bar")
@@ -20,6 +21,7 @@ struct MacsBarApp: App {
             SettingsView()
                 .environmentObject(appDelegate.shortcutStorage)
                 .environmentObject(appDelegate.updaterService)
+                .environmentObject(appDelegate.welcomeGuideController)
         }
     }
 }
@@ -29,6 +31,7 @@ struct AppContextMenu: View {
     @Environment(\.openSettings) private var openSettings
     @EnvironmentObject private var updaterService: UpdaterService
     @EnvironmentObject private var permissionManager: AccessibilityPermissionManager
+    @EnvironmentObject private var welcomeGuideController: WelcomeGuideController
 
     var body: some View {
         Group {
@@ -43,6 +46,10 @@ struct AppContextMenu: View {
                 updaterService.checkForUpdates()
             }
             .disabled(!updaterService.canCheckForUpdates)
+
+            Button("Welcome Guide...") {
+                welcomeGuideController.show()
+            }
 
             // Note: We intentionally stay as .accessory and don't switch to .regular when
             // opening Settings. This is the common pattern for menu bar utility apps (e.g.,
@@ -82,6 +89,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let shortcutStorage = ShortcutStorage()
     let updaterService = UpdaterService()
     let permissionManager = AccessibilityPermissionManager()
+    lazy var welcomeGuideController = WelcomeGuideController(
+        permissionManager: permissionManager,
+        shortcutStorage: shortcutStorage
+    )
     private var permissionCancellable: AnyCancellable?
     private var settingsCancellable: AnyCancellable?
     private var isTrackerStarted = false
@@ -125,8 +136,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.navigationModifiersDidChange(areHeld)
         }
 
-        // Hide Settings window during activation to prevent flash when NSApp.activate() is called
-        // (but only if we're not activating the Settings window itself)
+        // Hide auxiliary windows during activation to prevent a flash when NSApp.activate()
+        // is called (but only if we're not activating one of our own windows).
         //
         // Known issues:
         // - UI hang may occur when Rectangle app's settings window is open. Closing Rectangle's
@@ -135,25 +146,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // - Our Settings window gets sent to the back when activating other windows. This is a
         //   tradeoff to fix the z-order issue where Settings would incorrectly become the second
         //   frontmost window. Users can bring Settings back to front by clicking on it.
-        tracker.willActivateWindow = { (target: TrackedWindow) in
+        tracker.willActivateWindow = { [weak self] (target: TrackedWindow) in
+            guard let self else { return }
             // Skip if target is our own app (e.g., Settings window)
             let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
             if isOwnApp { return }
 
-            if let settingsWindow = NSApp.settingsWindow, settingsWindow.isVisible {
-                settingsWindow.alphaValue = 0
+            for window in self.auxiliaryWindows where window.isVisible {
+                window.alphaValue = 0
             }
         }
 
-        // Restore Settings window after activation, but order it to back to fix z-order
-        tracker.didActivateWindow = { (target: TrackedWindow) in
+        // Restore auxiliary windows after activation, but order them to back to fix z-order.
+        tracker.didActivateWindow = { [weak self] (target: TrackedWindow) in
+            guard let self else { return }
             // Skip if target is our own app (e.g., Settings window)
             let isOwnApp = target.appBundleId == Bundle.main.bundleIdentifier
             if isOwnApp { return }
 
-            if let settingsWindow = NSApp.settingsWindow, settingsWindow.alphaValue == 0 {
-                settingsWindow.orderBack(nil)
-                settingsWindow.alphaValue = 1
+            for window in self.auxiliaryWindows where window.alphaValue == 0 {
+                window.orderBack(nil)
+                window.alphaValue = 1
             }
         }
 
@@ -209,7 +222,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.refreshSettings()
             }
 
-        if !permissionManager.isPermissionGranted {
+        if welcomeGuideController.shouldPresentAutomatically() {
+            DispatchQueue.main.async { [weak self] in
+                self?.welcomeGuideController.show(isFirstRun: true)
+            }
+        } else if !permissionManager.isPermissionGranted {
             permissionManager.promptUserForPermission()
         }
 
@@ -305,6 +322,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let contentView = MacsBarContentView(state: state)
             .environmentObject(updaterService)
             .environmentObject(permissionManager)
+            .environmentObject(welcomeGuideController)
         let hostingView = MacsBarHostingView(rootView: AnyView(contentView))
         hostingView.state = state
         let panelContentView = MacsBarPanelContentView(
@@ -734,6 +752,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         autoHideShownStates[spaceId] = shown
         contentView.setBarShown(shown, animated: animated)
+    }
+
+    private var auxiliaryWindows: [NSWindow] {
+        [NSApp.settingsWindow, welcomeGuideController.window].compactMap { $0 }
     }
 
     private func cancelPendingAutoHideTransition(for spaceId: Int) {
