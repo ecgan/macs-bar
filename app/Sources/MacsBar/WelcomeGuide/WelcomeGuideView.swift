@@ -461,13 +461,15 @@ private struct ScreenPreview: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let height = geometry.size.height
-            let dockWidth = width * 0.48
             let dockHeight = max(24, height * 0.15)
-            let barWidth = width * 0.68
+            let menuBarHeight = max(16, height * 0.1)
+            let barWidth = width * 0.52
             let barHeight = max(15, height * 0.09)
+            let dockBottomInset: CGFloat = 5
+            let dockTop = height - dockHeight - dockBottomInset
             let barY = placementArea == .visibleFrame
-                ? height - dockHeight - barHeight - 18
-                : height - barHeight - 8
+                ? dockTop - barHeight / 2 - 5
+                : height - barHeight / 2 - dockBottomInset
 
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -481,19 +483,17 @@ private struct ScreenPreview: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .overlay(alignment: .top) {
-                        Capsule()
-                            .fill(Color.primary.opacity(0.13))
-                            .frame(width: width * 0.3, height: 5)
-                            .padding(.top, 8)
-                    }
+
+                previewMenuBar(width: width, height: menuBarHeight)
+                    .position(x: width / 2, y: menuBarHeight / 2)
+                    .zIndex(3)
 
                 previewBar(width: barWidth, height: barHeight)
                     .opacity(autoHideEnabled ? 0.3 : 1)
                     .position(x: width / 2, y: barY)
                     .zIndex(panelLevel == .inFrontOfDock ? 2 : 0)
 
-                previewDock(width: dockWidth, height: dockHeight)
+                previewDock(height: dockHeight)
                     .position(x: width / 2, y: height - dockHeight / 2 - 5)
                     .zIndex(1)
 
@@ -504,6 +504,7 @@ private struct ScreenPreview: View {
                         .zIndex(3)
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
@@ -513,8 +514,40 @@ private struct ScreenPreview: View {
         )
     }
 
+    private func previewMenuBar(width: CGFloat, height: CGFloat) -> some View {
+        let fontSize = max(6, height * 0.43)
+
+        return HStack(spacing: fontSize * 0.8) {
+            Image(systemName: "apple.logo")
+                .font(.system(size: fontSize, weight: .semibold))
+
+            Text("Finder")
+                .fontWeight(.semibold)
+            Text("File")
+            Text("Edit")
+            Text("View")
+
+            Spacer(minLength: 4)
+
+            Image(systemName: "wifi")
+            Image(systemName: "battery.75percent")
+            Text("9:41")
+                .monospacedDigit()
+        }
+        .font(.system(size: fontSize))
+        .foregroundStyle(Color.primary.opacity(0.78))
+        .padding(.horizontal, 8)
+        .frame(width: width, height: height)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.08))
+                .frame(height: 0.5)
+        }
+    }
+
     private func previewBar(width: CGFloat, height: CGFloat) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 0) {
             ForEach(0..<3, id: \.self) { index in
                 HStack(spacing: 3) {
                     RoundedRectangle(cornerRadius: 2)
@@ -525,19 +558,18 @@ private struct ScreenPreview: View {
                         .frame(width: width * 0.17, height: 3)
                 }
                 .padding(.horizontal, 5)
-                .frame(height: height * 0.78)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.primary.opacity(index == 0 ? 0.13 : 0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             }
         }
-        .padding(.horizontal, 5)
         .frame(width: width, height: height)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: height / 2, style: .continuous))
         .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
     }
 
-    private func previewDock(width: CGFloat, height: CGFloat) -> some View {
+    private func previewDock(height: CGFloat) -> some View {
         HStack(spacing: 5) {
             ForEach(0..<7, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 4)
@@ -549,7 +581,8 @@ private struct ScreenPreview: View {
                     .frame(width: height * 0.58, height: height * 0.58)
             }
         }
-        .frame(width: width, height: height)
+        .padding(.horizontal, 6)
+        .frame(height: height)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .overlay {
