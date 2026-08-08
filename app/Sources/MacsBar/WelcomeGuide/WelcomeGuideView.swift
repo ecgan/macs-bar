@@ -463,7 +463,8 @@ private struct ScreenPreview: View {
             let height = geometry.size.height
             let dockHeight = max(24, height * 0.15)
             let menuBarHeight = max(16, height * 0.1)
-            let barWidth = width * 0.52
+            let dockWidth = dockHeight * 0.58 * 7 + 5 * 6 + 12
+            let barWidth = dockWidth * 0.9
             let barHeight = max(15, height * 0.09)
             let dockBottomInset: CGFloat = 5
             let dockTop = height - dockHeight - dockBottomInset
